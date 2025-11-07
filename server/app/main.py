@@ -6,14 +6,18 @@ import uvicorn
 
 app = FastAPI(title="LinkedIn AI Posting Agent")
 
+aorigins = [
+    "https://post-sync-public-7uqj.vercel.app",  # Your Vercel frontend URL
+    "http://localhost:5173",                   # For your local development
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Include routes
 app.include_router(agent_router)
 app.include_router(auth_router)
