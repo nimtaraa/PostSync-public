@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth/linkedin", tags=["LinkedIn OAuth"])
 LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
 
-REDIRECT_URI = "http://localhost:5173/auth/callback"
+REDIRECT_URI = "https://post-sync-public-7uqj.vercel.app/auth/callback"
 
 TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"

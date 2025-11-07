@@ -10,3 +10,4 @@ google-generativeai
 tiktoken
 fastapi
 uvicorn
+gunicorn
