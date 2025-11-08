@@ -184,21 +184,23 @@ export const Dashboard = () => {
       setStartError(null);
       setStartMessage(null);
 
-      const response = await api.startAgent(niche); 
+      // Use the api wrapper method which exposes startAgent
+      const result = await api.startAgent(niche.trim());
 
-      setStartMessage(response.message || 'Agent started successfully!');
+      // startAgent may return the message directly or inside a 'data' property — handle both
+      const message = (result && (result.message || (result.data && result.data.message))) || 'Agent started successfully!';
+      setStartMessage(message);
       
+      // Fetch updated data after a delay
       setTimeout(() => {
         fetchDashboardData();
       }, 2000);
 
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error starting agent:', err);
       let message = 'Failed to start agent';
       if (axios.isAxiosError(err)) {
         message = err.response?.data?.detail || err.message;
-      } else if (err instanceof Error) {
-        message = err.message;
       }
       setStartError(message);
       setShowExecutionModal(false);

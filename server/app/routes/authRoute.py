@@ -21,6 +21,8 @@ from app.services.mongodb_service import (
     get_all_users,
     save_or_update_user_credentials  # <-- ADDED
 )
+from app.services.agent_graph import app as agent_graph
+from app.models.agent import AgentState
 # from app.services.Linkedin_credentials import set_credentials # <-- REMOVED
 
 # === LinkedIn OAuth Router ===
@@ -284,3 +286,35 @@ async def list_users():
 async def get_current_user_info(user_id: str = Depends(get_current_user)):
     """Get current authenticated user's ID."""
     return {"user_id": user_id}
+
+@posts_router.post("/start-agent")
+async def start_agent(
+    data: dict,
+    user_id: str = Depends(get_current_user)
+):
+    """Start the agent with proper credentials."""
+    try:
+        # Get user credentials
+        credentials = get_user_credentials(user_id)
+        if not credentials:
+            raise HTTPException(status_code=400, detail="User credentials not found")
+
+        # Initialize agent state
+        initial_state = AgentState(
+            niche=data.get("niche"),
+            user_id=user_id,
+            linkedin_access_token=credentials.get("linkedin_access_token"),
+            person_urn=credentials.get("person_urn")
+        )
+
+        # Execute agent graph
+        final_state = await agent_graph.ainvoke(initial_state)
+        
+        if "post_success" in str(final_state.messages):
+            return {"message": "Agent executed successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Agent execution failed")
+
+    except Exception as e:
+        logger.error(f"Agent execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

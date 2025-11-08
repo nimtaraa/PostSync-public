@@ -1,11 +1,12 @@
 # FILE: app/routes/route.py
 
-from fastapi import APIRouter, HTTPException, Depends  # <-- 1. IMPORT Depends
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from app.models.agent import AgentState
 from app.services.mongodb_service import (
     get_job_summary_from_summary_collection,
-    get_total_posts
+    get_total_posts,
+    get_user_credentials  # <-- 1. IMPORT get_user_credentials
 )
 from app.utils.logger import get_logger
 from app.services.agent_graph import app
@@ -14,23 +15,38 @@ from app.routes.authRoute import get_current_user  # <-- 2. IMPORT get_current_u
 logger = get_logger(__name__)
 router = APIRouter(prefix="/agent", tags=["Agent Workflow"])
 
-# ✅ Define a request body model
 class NicheRequest(BaseModel):
     niche: str
 
 @router.post("/start")
 def run_agent_workflow(
     req: NicheRequest,
-    user_id: str = Depends(get_current_user)  # <-- 3. ADD get_current_user dependency
+    user_id: str = Depends(get_current_user)  # <-- 3. ADD dependency
 ):
     """
-    🚀 Run the AI agent workflow for a given niche and user.
+    Run the AI agent workflow for a given niche and user.
     """
     try:
-        # --- 4. PASS user_id into the AgentState ---
+        # --- 4. FETCH CREDENTIALS ---
+        credentials = get_user_credentials(user_id)
+        if not credentials:
+            logger.error(f"No credentials found for user {user_id}. Login required.")
+            raise HTTPException(status_code=401, detail="Could not find user credentials. Please log in again.")
+        
+        access_token = credentials.get("linkedin_access_token")
+        person_urn = credentials.get("person_urn")
+        
+        if not access_token or not person_urn:
+            logger.error(f"Incomplete credentials for user {user_id}. Login required.")
+            raise HTTPException(status_code=401, detail="Incomplete credentials. Please log in again.")
+        # --- END OF FETCH ---
+
+        # --- 5. PASS CREDENTIALS to AgentState ---
         state = AgentState(
             niche=req.niche,
-            user_id=user_id,  # <-- This is the critical fix
+            user_id=user_id,
+            linkedin_access_token=access_token,  # <-- PASS TOKEN
+            person_urn=person_urn,              # <-- PASS URN
             topic=None,
             post_draft=None,
             final_post=None,
@@ -38,7 +54,7 @@ def run_agent_workflow(
             is_approved=False,
             iteration_count=0,
         )
-        # --- END OF FIX ---
+        # --- END OF PASS ---
 
         logger.info("🚀 Starting workflow for niche: %s, User: %s", req.niche, user_id)
 
@@ -57,7 +73,7 @@ def run_agent_workflow(
 
 @router.get("/summary")
 def get_jobs_summary(
-    user_id: str = Depends(get_current_user)  # <-- 5. ADD get_current_user dependency
+    user_id: str = Depends(get_current_user)  # <-- 6. ADD dependency
 ):
     """
     ✅ Returns total completed and failed jobs for the logged-in user.
@@ -65,20 +81,16 @@ def get_jobs_summary(
     try:
         logger.info("Fetching job summary for user: %s", user_id)
 
-        # --- 6. PASS user_id to database functions ---
+        # --- 7. PASS user_id to functions ---
         job_summary = get_job_summary_from_summary_collection(user_id)  
         total_posts = get_total_posts(user_id)
         
-        logger.info(
-            "Job summary fetched: completed=%d, failed=%d",
-            total_posts,
-            job_summary.get("total_failed", 0)
-        )
+        total_failed = job_summary.get("total_failed", 0)
+        logger.info("Job summary fetched: completed=%d, failed=%d", total_posts, total_failed)
         
-        # --- 7. RETURN the correct data ---
         return {
             "total_completed": total_posts,
-            "total_failed": job_summary.get("total_failed", 0)
+            "total_failed": total_failed
         }
 
     except Exception as e:

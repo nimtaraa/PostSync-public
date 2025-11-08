@@ -75,13 +75,20 @@ def save_post(linkedin_user_id: str, platform: str, content: str, niche: str, im
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
-        # Pass 'niche' to your Post model
-        post = Post(platform=platform, content=content, niche=niche, image_data=image_data) 
+        logger.info(f"Attempting to save post for user {linkedin_user_id}")
+        logger.debug(f"Post data: platform={platform}, niche={niche}, content_length={len(content)}")
+        
+        post = Post(platform=platform, content=content, niche=niche, image_data=image_data)
         result = collection.insert_one(post.model_dump())
-        logger.info(f"Post saved for user {linkedin_user_id} with ID: {result.inserted_id}")
+        
+        logger.info(f"Post saved successfully with ID: {result.inserted_id}")
         return str(result.inserted_id)
+        
     except Exception as e:
-        logger.error(POST_SAVE_ERROR.format(error=e))
+        logger.error(f"Failed to save post: {str(e)}")
+        logger.error(f"Collection: {collection.name}")
+        logger.error(f"MongoDB URI: {MONGO_URI}")
+        logger.error(f"Database: {DB_NAME}")
         return None
 
 def get_total_posts(linkedin_user_id: str) -> int:
