@@ -13,7 +13,7 @@ POST_NICHE = os.getenv("POST_NICHE")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME")
-DB_COLLECTION_NAME = os.getenv("DB_COLLECTION_NAME")
+
 
 # === Check for missing environment variables ===
 required_vars = [
@@ -24,7 +24,7 @@ required_vars = [
     "GEMINI_API_KEY",
     "MONGO_URI",
     "DB_NAME",
-    "DB_COLLECTION_NAME",
+   
 ]
 
 missing_vars = [var for var in required_vars if not os.getenv(var)]
