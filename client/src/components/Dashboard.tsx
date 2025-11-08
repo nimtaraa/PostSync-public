@@ -1,3 +1,6 @@
+// FILE: src/components/Dashboard.tsx
+// (Make sure this file is at this path)
+
 import { useAuth } from '../contexts/AuthContext';
 import { useCronJobStatus } from '../hooks/useCronJobStatus';
 import { useAgentStart } from '../hooks/useAgentStart';
@@ -20,6 +23,19 @@ export const Dashboard = () => {
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
+
+  // --- THIS IS THE FIX ---
+  // Create the onClick handler function
+  const handleStartAgentClick = () => {
+    // 1. Check if the user and token exist
+    if (!user || !user.accessToken) {
+      alert("Error: You are not logged in or your token is missing.");
+      return;
+    }
+    // 2. Call startAgent with both the niche and the token
+    startAgent("AI Content", user.accessToken);
+  };
+  // --- END OF FIX ---
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -65,8 +81,9 @@ export const Dashboard = () => {
             </p>
           </div>
 
+          {/* 3. Update the button's onClick to use the new handler */}
           <button
-            onClick={() => startAgent("AI Content")}
+            onClick={handleStartAgentClick}
             disabled={starting}
             className={`mt-4 sm:mt-0 inline-flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white transition-all shadow-md ${
               starting
@@ -101,7 +118,7 @@ export const Dashboard = () => {
           </div>
         )}
 
-        {/* Job Summary Cards */}
+        {/* Job Summary Cards (rest of the file is the same...) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
