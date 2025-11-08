@@ -11,6 +11,8 @@ class AgentState(BaseModel):
     topic: Optional[str] = None
     post_draft: Optional[str] = None
     user_id: Optional[str] = None
+    linkedin_access_token: Optional[str] = None  # <-- ADD THIS
+    person_urn: Optional[str] = None             # <-- ADD THIS
     is_approved: bool = False
     final_post: Optional[str] = None
     current_node: str = "topic_generator"

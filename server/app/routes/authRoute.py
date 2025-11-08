@@ -1,3 +1,5 @@
+# FILE: app/routes/authRoute.py
+
 import json
 import os
 import requests
@@ -7,7 +9,7 @@ from pydantic import BaseModel
 import jwt
 from datetime import datetime, timedelta
 
-from app.services.Linkedin_credentials import set_credentials
+# --- 1. IMPORT CHANGES ---
 from app.services.mongodb_service import (
     save_post,
     get_total_posts,
@@ -16,8 +18,10 @@ from app.services.mongodb_service import (
     get_posts_stats,
     get_job_summary_from_summary_collection,
     update_job_summary,
-    get_all_users
+    get_all_users,
+    save_or_update_user_credentials  # <-- ADDED
 )
+# from app.services.Linkedin_credentials import set_credentials # <-- REMOVED
 
 # === LinkedIn OAuth Router ===
 auth_router = APIRouter(prefix="/auth/linkedin", tags=["LinkedIn OAuth"])
@@ -29,7 +33,7 @@ TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 
 # JWT Configuration
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
@@ -57,12 +61,6 @@ def verify_jwt_token(token: str) -> dict:
 async def get_current_user(authorization: str = Header(...)) -> str:
     """
     Extract LinkedIn user_id from JWT token in Authorization header.
-    
-    Args:
-        authorization: Bearer token from header
-    
-    Returns:
-        str: LinkedIn user ID
     """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -153,8 +151,10 @@ def get_user_info(authorization: str = Header(...)):
     user_id = data.get("sub")
     person_urn = f"urn:li:person:{user_id}"
     
-    # Store LinkedIn credentials for posting
-    set_credentials(access_token, person_urn)
+    # --- 2. THIS IS THE FIX ---
+    # Save credentials to the database
+    save_or_update_user_credentials(user_id, access_token, person_urn)
+    # --- END OF FIX ---
     
     # Prepare user data
     user_data = {
@@ -172,7 +172,7 @@ def get_user_info(authorization: str = Header(...)):
     return {
         **user_data,
         "jwt_token": jwt_token,  # Frontend should use this for API calls
-        "linkedin_access_token": access_token  # Keep for LinkedIn API operations
+        # "linkedin_access_token": access_token  <-- No longer send this
     }
 
 
@@ -183,6 +183,7 @@ posts_router = APIRouter(prefix="/api", tags=["posts"])
 class PostCreate(BaseModel):
     platform: str
     content: str
+    niche: str  # <-- 3. ADDED niche
     image_data: Optional[bytes] = None
 
 class PostStats(BaseModel):
@@ -201,12 +202,15 @@ async def create_post(
     user_id: str = Depends(get_current_user)
 ):
     """Create a new post for the authenticated user."""
+    # --- 4. UPDATED save_post call ---
     post_id = save_post(
         linkedin_user_id=user_id,
         platform=post.platform,
         content=post.content,
+        niche=post.niche,  # <-- PASS niche
         image_data=post.image_data
     )
+    # --- END OF UPDATE ---
     
     if post_id:
         return {
@@ -280,9 +284,3 @@ async def list_users():
 async def get_current_user_info(user_id: str = Depends(get_current_user)):
     """Get current authenticated user's ID."""
     return {"user_id": user_id}
-
-
-# === Main Application Setup ===
-# In your main.py, include both routers:
-# app.include_router(auth_router)
-# app.include_router(posts_router)

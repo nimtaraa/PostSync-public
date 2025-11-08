@@ -1,10 +1,13 @@
+# FILE: app/services/mongodb_service.py
+
 from pymongo import MongoClient
-from typing import List, Optional
+from typing import List, Optional, Dict, Any # <-- ADDED
 from app.utils.config import MONGO_URI, DB_NAME
 from app.models.post import Post
 from app.utils.constants import POST_SAVE_ERROR
 from app.utils.logger import get_logger
 from langchain.tools import tool
+from datetime import datetime # <-- ADDED
 
 logger = get_logger(__name__)
 
@@ -12,44 +15,68 @@ logger = get_logger(__name__)
 def get_user_collection(linkedin_user_id: str, collection_type: str = "posts"):
     """
     Get a user-specific collection based on LinkedIn user ID.
-    
-    Args:
-        linkedin_user_id (str): LinkedIn user ID from JWT/auth (data.get("sub"))
-        collection_type (str): Type of collection ("posts" or "summary")
-    
-    Returns:
-        MongoDB collection object
     """
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
     
     # Sanitize user_id to create valid collection name
-    # Replace any invalid characters with underscore
     safe_user_id = linkedin_user_id.replace("-", "_").replace(".", "_")
     
     # Create collection name: user_{linkedin_id}_{type}
-    # Example: "user_abc123_posts", "user_abc123_summary"
     collection_name = f"user_{safe_user_id}_{collection_type}"
     
     return db[collection_name]
 
+# --- NEW FUNCTION ---
+def save_or_update_user_credentials(linkedin_user_id: str, access_token: str, person_urn: str):
+    """
+    Saves or updates a user's credentials in their 'summary' collection.
+    """
+    collection = get_user_collection(linkedin_user_id, "summary")
+    try:
+        collection.update_one(
+            {"_id": "user_credentials"},  # Use a fixed ID for this special document
+            {
+                "$set": {
+                    "linkedin_access_token": access_token,
+                    "person_urn": person_urn,
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            upsert=True  # Create the document if it doesn't exist
+        )
+        logger.info(f"Successfully saved credentials for user {linkedin_user_id}")
+    except Exception as e:
+        logger.error(f"Failed to save credentials for user {linkedin_user_id}: {e}")
+
+# --- NEW FUNCTION ---
+def get_user_credentials(linkedin_user_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieves a user's credentials from their 'summary' collection.
+    """
+    collection = get_user_collection(linkedin_user_id, "summary")
+    try:
+        credentials = collection.find_one({"_id": "user_credentials"})
+        if credentials:
+            logger.info(f"Successfully retrieved credentials for user {linkedin_user_id}")
+            return credentials
+        else:
+            logger.warning(f"No credentials found for user {linkedin_user_id}")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to get credentials for user {linkedin_user_id}: {e}")
+        return None
+
+# --- UPDATED FUNCTION ---
 @tool("save_post")
-def save_post(linkedin_user_id: str, platform: str, content: str, image_data: Optional[bytes] = None) -> Optional[str]:
+def save_post(linkedin_user_id: str, platform: str, content: str, niche: str, image_data: Optional[bytes] = None) -> Optional[str]:
     """
     Save a post to user-specific MongoDB collection.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID from authentication
-        platform (str): Platform name (e.g., "LinkedIn").
-        content (str): Post text.
-        image_data (Optional[bytes]): Optional image binary data.
-
-    Returns:
-        Optional[str]: MongoDB inserted post ID if successful.
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
-        post = Post(platform=platform, content=content, image_data=image_data)
+        # Pass 'niche' to your Post model
+        post = Post(platform=platform, content=content, niche=niche, image_data=image_data) 
         result = collection.insert_one(post.model_dump())
         logger.info(f"Post saved for user {linkedin_user_id} with ID: {result.inserted_id}")
         return str(result.inserted_id)
@@ -60,12 +87,6 @@ def save_post(linkedin_user_id: str, platform: str, content: str, image_data: Op
 def get_total_posts(linkedin_user_id: str) -> int:
     """
     Get the total number of posts for a specific user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-
-    Returns:
-        int: Total count of posts for the user.
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
@@ -79,13 +100,6 @@ def get_total_posts(linkedin_user_id: str) -> int:
 def get_recent_posts(linkedin_user_id: str, limit: int = 10) -> List[dict]:
     """
     Get the most recent posts for a specific user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-        limit (int): Number of recent posts to retrieve. Default is 10.
-
-    Returns:
-        List[dict]: List of recent posts, sorted by newest first.
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
@@ -103,14 +117,6 @@ def get_recent_posts(linkedin_user_id: str, limit: int = 10) -> List[dict]:
 def get_posts_by_platform(linkedin_user_id: str, platform: str, limit: int = 10) -> List[dict]:
     """
     Get recent posts for a specific platform and user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-        platform (str): Platform name (e.g., "LinkedIn").
-        limit (int): Number of posts to retrieve. Default is 10.
-
-    Returns:
-        List[dict]: List of posts for the specified platform.
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
@@ -128,12 +134,6 @@ def get_posts_by_platform(linkedin_user_id: str, platform: str, limit: int = 10)
 def get_posts_stats(linkedin_user_id: str) -> dict:
     """
     Get statistics about posts for a specific user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-
-    Returns:
-        dict: Statistics including total posts, posts by platform, etc.
     """
     collection = get_user_collection(linkedin_user_id, "posts")
     try:
@@ -160,12 +160,6 @@ def get_posts_stats(linkedin_user_id: str) -> dict:
 def get_job_summary_from_summary_collection(linkedin_user_id: str) -> dict:
     """
     Fetch total completed and failed counts for a specific user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-
-    Returns:
-        dict: { "total_completed": int, "total_failed": int }
     """
     collection = get_user_collection(linkedin_user_id, "summary")
 
@@ -188,14 +182,6 @@ def get_job_summary_from_summary_collection(linkedin_user_id: str) -> dict:
 def update_job_summary(linkedin_user_id: str, field: str, increment: int = 1) -> str:
     """
     Increment or decrement 'total_completed' or 'total_failed' for a specific user.
-
-    Args:
-        linkedin_user_id (str): LinkedIn user ID
-        field (str): Either 'total_completed' or 'total_failed'.
-        increment (int): +1 to increase or -1 to decrease.
-
-    Returns:
-        str: Log message indicating success or failure.
     """
     if field not in ["total_completed", "total_failed"]:
         msg = f"❌ Invalid field name: {field}. Must be 'total_completed' or 'total_failed'."
@@ -225,9 +211,6 @@ def update_job_summary(linkedin_user_id: str, field: str, increment: int = 1) ->
 def get_all_users() -> List[dict]:
     """
     Get a list of all users who have collections in the database.
-    
-    Returns:
-        List[dict]: List of user info with their collection counts
     """
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
@@ -235,14 +218,11 @@ def get_all_users() -> List[dict]:
     try:
         collections = db.list_collection_names()
         
-        # Extract unique user IDs from collection names
         users = {}
         for coll in collections:
             if coll.startswith("user_") and ("_posts" in coll or "_summary" in coll):
-                # Extract user_id from collection name
                 parts = coll.split("_")
                 if len(parts) >= 3:
-                    # Reconstruct user_id (might contain underscores)
                     if coll.endswith("_posts"):
                         user_id = "_".join(parts[1:-1])
                     elif coll.endswith("_summary"):
