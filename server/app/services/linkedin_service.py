@@ -25,23 +25,43 @@ def post_to_linkedin(
 ) -> str:
     """
     Publishes a post to LinkedIn, optionally with an image.
-    All arguments (post_content, access_token, person_urn, image_urn)
-    must be provided as a dictionary to the .invoke() method.
     """
     
-    logger.info(f"Attempting to post for user {person_urn}...")
+    logger.info("=== LinkedIn Post Attempt ===")
+    logger.info(f"Content Length: {len(post_content)}")
+    logger.info(f"Person URN: {person_urn}")
+    logger.info(f"Has Image: {bool(image_urn)}")
+    logger.info(f"Token Prefix: {access_token[:10] if access_token else 'None'}...")
     
-    if not access_token or not person_urn:
-        error_msg = "Error: Missing access_token or person_urn."
+    if not access_token:
+        error_msg = "Missing LinkedIn access token"
         logger.error(error_msg)
-        return error_msg
+        return f"Error: {error_msg}"
         
-    post_url = POST_URL
+    if not person_urn:
+        error_msg = "Missing person URN"
+        logger.error(error_msg)
+        return f"Error: {error_msg}"
+
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
         "X-Restli-Protocol-Version": "2.0.0"
     }
+
+    # Test the token first
+    try:
+        test_response = requests.get(PROFILE_URL, headers=headers)
+        if test_response.status_code != 200:
+            error_msg = f"LinkedIn token validation failed: {test_response.status_code}"
+            logger.error(error_msg)
+            return f"Error: {error_msg}"
+    except Exception as e:
+        error_msg = f"Token validation request failed: {str(e)}"
+        logger.error(error_msg)
+        return f"Error: {error_msg}"
+
+    post_url = POST_URL
     
     post_data = {
         "author": f"urn:li:person:{person_urn}",

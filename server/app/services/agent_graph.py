@@ -194,34 +194,65 @@ def post_executor_node(state: AgentState) -> PostExecutorOutput:
     niche = state.niche
     image_asset_urn = state.image_asset_urn
 
+    # Add detailed logging
+    logger.info("Starting post_executor_node with state:")
+    logger.info(f"- User ID: {user_id}")
+    logger.info(f"- Has Access Token: {bool(access_token)}")
+    logger.info(f"- Has Person URN: {bool(person_urn)}")
+    logger.info(f"- Post Length: {len(final_post) if final_post else 0}")
+    logger.info(f"- Has Image URN: {bool(image_asset_urn)}")
+
     if not all([final_post, access_token, person_urn, user_id, niche]):
-        logger.error(f"❌ Missing critical data in post_executor_node. User: {user_id}")
-        return {"messages": [{"role": "system", "content": "post_failed"}]}
+        missing = []
+        if not final_post: missing.append("final_post")
+        if not access_token: missing.append("access_token")
+        if not person_urn: missing.append("person_urn")
+        if not user_id: missing.append("user_id")
+        if not niche: missing.append("niche")
+        
+        error_msg = f"Missing critical data: {', '.join(missing)}"
+        logger.error(f"❌ {error_msg}")
+        return {"messages": [{"role": "system", "content": f"post_failed: {error_msg}"}]}
 
     try:
-        # 1️⃣ Post to LinkedIn
-        linkedin_response = post_to_linkedin.invoke({
+        # 1️⃣ Post to LinkedIn with explicit parameters
+        linkedin_post_params = {
             "post_content": final_post,
             "access_token": access_token,
             "person_urn": person_urn,
             "image_urn": image_asset_urn
-        })
+        }
+        logger.info("Calling LinkedIn API with params:")
+        logger.info(f"- Content Length: {len(linkedin_post_params['post_content'])}")
+        logger.info(f"- Token Prefix: {access_token[:10]}...")
+        logger.info(f"- Person URN: {person_urn}")
+        
+        linkedin_response = post_to_linkedin.invoke(linkedin_post_params)
+        
+        if "Error:" in str(linkedin_response):
+            raise Exception(f"LinkedIn API error: {linkedin_response}")
+            
         logger.info("✅ LinkedIn post successful: %s", linkedin_response)
 
         # 2️⃣ Save post to MongoDB
-        save_post.invoke({
+        mongo_response = save_post.invoke({
             "linkedin_user_id": user_id,
             "platform": "LinkedIn",
             "content": final_post,
-            "niche": niche,
-            # "image_data": None # You aren't saving image bytes, which is fine
+            "niche": niche
         })
-        logger.info(POST_EXECUTOR_SUCCESS_MESSAGE)
+        
+        if not mongo_response:
+            logger.warning("⚠️ MongoDB save returned None")
+            
+        logger.info("✅ Post saved to MongoDB with ID: %s", mongo_response)
 
         return {"messages": [{"role": "system", "content": "post_success"}]}
+        
     except Exception as e:
-        logger.exception(POST_EXECUTOR_FAILURE_MESSAGE.format(error=e))
-        return {"messages": [{"role": "system", "content": "post_failed"}]}
+        error_msg = str(e)
+        logger.exception(f"❌ Post execution failed: {error_msg}")
+        return {"messages": [{"role": "system", "content": f"post_failed: {error_msg}"}]}
 
 
 # ------------------------------------------------------------

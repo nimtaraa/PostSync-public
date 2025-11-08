@@ -77,7 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleOAuthCallback = async (code: string) => {
     try {
       setIsLoading(true);
-
+      
       // Step 1: Exchange code for LinkedIn access token
       const tokenResponse = await axios.post(`${API_BASE_URL}/auth/linkedin/token`, {
         code,
@@ -93,19 +93,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       });
 
-      const { jwt_token, linkedin_access_token, ...userData } = userResponse.data;
+      const { jwt_token, ...userData } = userResponse.data;
+
+      // IMPORTANT: Store the LinkedIn access token from userResponse, not tokenResponse
+      const linkedinAccessToken = userResponse.data.linkedin_access_token;
 
       // Store tokens and user data
       localStorage.setItem('jwt_token', jwt_token);
-      localStorage.setItem('linkedin_token', linkedin_access_token);
+      localStorage.setItem('linkedin_token', linkedinAccessToken);
       localStorage.setItem('user', JSON.stringify(userData));
 
       setJwtToken(jwt_token);
-      setLinkedinToken(linkedin_access_token);
+      setLinkedinToken(linkedinAccessToken);
       setUser(userData);
 
       // Clean up URL
-window.location.href = '/dashboard';      
+      window.location.href = '/dashboard';      
     } catch (error) {
       console.error('OAuth callback error:', error);
       logout();
