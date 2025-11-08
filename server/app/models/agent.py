@@ -10,6 +10,7 @@ class AgentState(BaseModel):
     niche: str
     topic: Optional[str] = None
     post_draft: Optional[str] = None
+    user_id: Optional[str] = None
     is_approved: bool = False
     final_post: Optional[str] = None
     current_node: str = "topic_generator"
