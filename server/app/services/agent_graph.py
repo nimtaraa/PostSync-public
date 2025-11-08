@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import os
-from typing import Optional, Dict
+from typing import Optional, Dict, TypedDict
 from datetime import datetime, timezone
 
 from langchain_openai import ChatOpenAI
@@ -15,7 +15,7 @@ from app.services.gemini_service import generate_gemini_image
 from app.services.mongodb_service import save_post
 from app.utils.logger import get_logger
 from app.utils.config import OPENAI_API_KEY
-from app.models.agent import AgentState
+from app.models.agent import AgentState  # This is your Pydantic BaseModel
 from app.utils.constants import (
     TOPIC_GENERATOR_SYSTEM_PROMPT,
     TOPIC_GENERATOR_USER_PROMPT,
@@ -34,7 +34,6 @@ MAX_ITERATIONS = 1
 llm = ChatOpenAI(model="gpt-4o", temperature=0.7, openai_api_key=OPENAI_API_KEY)
 
 # === LangGraph Tools ===
-# These are the tools that will be called with .invoke()
 posting_tools = [post_to_linkedin, generate_gemini_image, save_post]
 posting_agent = create_react_agent(model=llm, tools=posting_tools)
 
@@ -42,10 +41,15 @@ posting_agent = create_react_agent(model=llm, tools=posting_tools)
 # 🧩 Node Implementations
 # ------------------------------------------------------------
 
-def topic_generator_node(state: AgentState) -> Dict[str, Optional[str]]:
+# LangGraph merges the returned dictionary into the state.
+# We define what each node returns using TypedDict for clarity.
+class TopicGeneratorOutput(TypedDict):
+    topic: str
+
+def topic_generator_node(state: AgentState) -> TopicGeneratorOutput:
     """Generate a topic for the given niche."""
     try:
-        niche = state.get("niche") # Use .get() for safety
+        niche = state.niche # <-- FIX: Direct access
         prompt = ChatPromptTemplate.from_messages([
             ("system", TOPIC_GENERATOR_SYSTEM_PROMPT),
             ("user", TOPIC_GENERATOR_USER_PROMPT.format(niche=niche)),
@@ -57,14 +61,16 @@ def topic_generator_node(state: AgentState) -> Dict[str, Optional[str]]:
         return {"topic": topic}
     except Exception as e:
         logger.exception("❌ Topic generation failed: %s", e)
-        fallback = f"{state.get('niche')} insight {datetime.utcnow().isoformat()}"
+        fallback = f"{state.niche} insight {datetime.utcnow().isoformat()}"
         return {"topic": fallback}
 
+class ContentCreatorOutput(TypedDict):
+    post_draft: str
 
-def content_creator_node(state: AgentState) -> Dict[str, Optional[str]]:
+def content_creator_node(state: AgentState) -> ContentCreatorOutput:
     """Generate a LinkedIn post draft from the topic."""
     try:
-        topic = state.get("topic")
+        topic = state.topic # <-- FIX: Direct access
         prompt = ChatPromptTemplate.from_messages([
             ("system", CONTENT_CREATOR_SYSTEM_PROMPT),
             ("user", CONTENT_CREATOR_USER_PROMPT.format(topic=topic)),
@@ -76,13 +82,18 @@ def content_creator_node(state: AgentState) -> Dict[str, Optional[str]]:
         return {"post_draft": post_draft}
     except Exception as e:
         logger.exception("❌ Content creation failed: %s", e)
-        return {"post_draft": f"{state.get('topic')} — quick insight"}
+        return {"post_draft": f"{state.topic} — quick insight"}
 
+class ReviewerOutput(TypedDict):
+    is_approved: bool
+    iteration_count: int
+    final_post: Optional[str] # Only set if approved
+    post_draft: Optional[str] # Only set if NOT approved
 
-def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
+def reviewer_node(state: AgentState) -> ReviewerOutput:
     """Review and refine post drafts until approved or max iterations reached."""
-    current_iter = state.get("iteration_count", 0) + 1
-    post_draft = state.get("post_draft")
+    current_iter = state.iteration_count + 1 # <-- FIX: Direct access
+    post_draft = state.post_draft           # <-- FIX: Direct access
     try:
         prompt = ChatPromptTemplate.from_messages([
             ("system", REVIEWER_SYSTEM_PROMPT),
@@ -107,15 +118,17 @@ def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
     else:
         logger.info("🔁 Rework suggested (iteration %d): %s", current_iter, content[:80])
         return {
-            "post_draft": content,
+            "post_draft": content, # Return the critique as the new draft
             "is_approved": False,
             "iteration_count": current_iter,
         }
 
+class ImageGenOutput(TypedDict):
+    image_asset_urn: Optional[str]
 
-def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
+def image_generation_node(state: AgentState) -> ImageGenOutput:
     """Generate image using Gemini and upload to LinkedIn."""
-    final_post = state.get("final_post")
+    final_post = state.final_post # <-- FIX: Direct access
     if not final_post:
         logger.warning("⚠️ No final_post available, skipping image generation.")
         return {"image_asset_urn": None}
@@ -123,16 +136,15 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
     TEMP_IMAGE_PATH = "temp_dummy_image.png" 
 
     try:
-        # --- 1. GET CREDENTIALS FROM STATE ---
-        access_token = state.get("linkedin_access_token")
-        person_urn = state.get("person_urn")
+        # --- GET CREDENTIALS FROM STATE ---
+        access_token = state.linkedin_access_token # <-- FIX: Direct access
+        person_urn = state.person_urn             # <-- FIX: Direct access
 
         if not access_token or not person_urn:
             logger.error("❌ Missing credentials in image_generation_node.")
             return {"image_asset_urn": None}
         
         # 1️⃣ Generate dummy image bytes
-        #    We assume generate_gemini_image is a @tool that takes a string
         image_bytes = generate_gemini_image.invoke(final_post)
 
         if not image_bytes:
@@ -145,8 +157,6 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
         logger.info(f"✅ Dummy image saved at {TEMP_IMAGE_PATH}")
 
         # 3️⃣ Upload to LinkedIn
-        # --- 2. PASS CREDENTIALS TO THE UPLOAD FUNCTION ---
-        #    We assume upload_media_to_linkedin is a regular function, not a @tool
         asset_urn = upload_media_to_linkedin(
             file_path=TEMP_IMAGE_PATH,
             access_token=access_token,
@@ -170,18 +180,19 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
         logger.exception("❌ Image generation error: %s", e)
         return {"image_asset_urn": None}
 
+class PostExecutorOutput(TypedDict):
+    messages: list[dict[str, str]]
 
-def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
+def post_executor_node(state: AgentState) -> PostExecutorOutput:
     """Post content to LinkedIn and save record in MongoDB."""
     
-    # --- 1. GET ALL DATA FROM STATE ---
-    final_post = state.get("final_post")
-    access_token = state.get("linkedin_access_token")
-    person_urn = state.get("person_urn")
-    user_id = state.get("user_id")
-    niche = state.get("niche")
-    image_asset_urn = state.get("image_asset_urn")
-    # topic = state.get("topic") # Get topic if you want to save it
+    # --- GET ALL DATA FROM STATE (using direct access) ---
+    final_post = state.final_post
+    access_token = state.linkedin_access_token
+    person_urn = state.person_urn
+    user_id = state.user_id
+    niche = state.niche
+    image_asset_urn = state.image_asset_urn
 
     if not all([final_post, access_token, person_urn, user_id, niche]):
         logger.error(f"❌ Missing critical data in post_executor_node. User: {user_id}")
@@ -189,7 +200,6 @@ def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
 
     try:
         # 1️⃣ Post to LinkedIn
-        # --- 2. PASS ALL ARGS TO post_to_linkedin.invoke ---
         linkedin_response = post_to_linkedin.invoke({
             "post_content": final_post,
             "access_token": access_token,
@@ -199,13 +209,12 @@ def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
         logger.info("✅ LinkedIn post successful: %s", linkedin_response)
 
         # 2️⃣ Save post to MongoDB
-        # --- 3. PASS ALL ARGS TO save_post.invoke ---
         save_post.invoke({
             "linkedin_user_id": user_id,
             "platform": "LinkedIn",
             "content": final_post,
             "niche": niche,
-            # "image_data": None # We save the URN, not the bytes
+            # "image_data": None # You aren't saving image bytes, which is fine
         })
         logger.info(POST_EXECUTOR_SUCCESS_MESSAGE)
 
@@ -219,7 +228,7 @@ def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
 # 🧭 Decision Function
 # ------------------------------------------------------------
 def decide_to_rework(state: AgentState) -> str:
-    return "image_generation" if state.get("is_approved") else "content_creator"
+    return "image_generation" if state.is_approved else "content_creator" # <-- FIX: Direct access
 
 
 # ------------------------------------------------------------
