@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.models.agent import AgentState
-from app.services.mongodb_service import get_job_summary_from_summary_collection
+from app.services.mongodb_service import get_job_summary_from_summary_collection, get_total_posts
 from app.utils.logger import get_logger
 from app.services.agent_graph import app
 
@@ -55,9 +55,8 @@ def get_jobs_summary():
         logger.info("Job summary fetched: completed=%d, failed=%d", job_summary["total_completed"], job_summary["total_failed"])
         
         return {
-            "total_completed": job_summary["total_completed"],
-            "total_failed": job_summary["total_failed"]
-        }
+            "total_completed": get_total_posts(),
+            "total_failed": 0        }
 
     except Exception as e:
         logger.exception("Failed to fetch job summary: %s", e)

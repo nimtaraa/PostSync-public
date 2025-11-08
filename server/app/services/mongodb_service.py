@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from typing import Optional
+from typing import List, Optional
 from app.utils.config import MONGO_URI, DB_NAME, DB_COLLECTION_NAME
 from app.models.post import Post
 from app.utils.constants import POST_SAVE_ERROR
@@ -37,6 +37,103 @@ def save_post(platform: str, content: str, image_data: Optional[bytes] = None) -
         logger.error(POST_SAVE_ERROR.format(error=e))
         return None
 
+def get_total_posts() -> int:
+    """
+    Get the total number of posts in the database.
+
+    Returns:
+        int: Total count of posts.
+    """
+    collection = get_collection()
+    try:
+        count = collection.count_documents({})
+        logger.info(f"Total posts in database: {count}")
+        return count
+    except Exception as e:
+        logger.error(f"Failed to get total posts: {e}")
+        return 0
+
+def get_recent_posts(limit: int = 10) -> List[dict]:
+    """
+    Get the most recent posts from the database.
+
+    Args:
+        limit (int): Number of recent posts to retrieve. Default is 10.
+
+    Returns:
+        List[dict]: List of recent posts, sorted by newest first.
+    """
+    collection = get_collection()
+    try:
+        # Sort by _id descending (newest first) and limit results
+        posts = list(collection.find().sort("_id", -1).limit(limit))
+        
+        # Convert ObjectId to string for JSON serialization
+        for post in posts:
+            post["_id"] = str(post["_id"])
+        
+        logger.info(f"Retrieved {len(posts)} recent posts")
+        return posts
+    except Exception as e:
+        logger.error(f"Failed to get recent posts: {e}")
+        return []
+
+def get_posts_by_platform(platform: str, limit: int = 10) -> List[dict]:
+    """
+    Get recent posts for a specific platform.
+
+    Args:
+        platform (str): Platform name (e.g., "LinkedIn").
+        limit (int): Number of posts to retrieve. Default is 10.
+
+    Returns:
+        List[dict]: List of posts for the specified platform.
+    """
+    collection = get_collection()
+    try:
+        posts = list(collection.find({"platform": platform}).sort("_id", -1).limit(limit))
+        
+        # Convert ObjectId to string
+        for post in posts:
+            post["_id"] = str(post["_id"])
+        
+        logger.info(f"Retrieved {len(posts)} posts for platform: {platform}")
+        return posts
+    except Exception as e:
+        logger.error(f"Failed to get posts for platform {platform}: {e}")
+        return []
+
+def get_posts_stats() -> dict:
+    """
+    Get statistics about posts in the database.
+
+    Returns:
+        dict: Statistics including total posts, posts by platform, etc.
+    """
+    collection = get_collection()
+    try:
+        total_posts = collection.count_documents({})
+        
+        # Count posts by platform
+        pipeline = [
+            {"$group": {"_id": "$platform", "count": {"$sum": 1}}}
+        ]
+        platform_counts = list(collection.aggregate(pipeline))
+        
+        # Format the results
+        platforms = {item["_id"]: item["count"] for item in platform_counts}
+        
+        stats = {
+            "total_posts": total_posts,
+            "posts_by_platform": platforms
+        }
+        
+        logger.info(f"Posts statistics: {stats}")
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get posts stats: {e}")
+        return {"total_posts": 0, "posts_by_platform": {}}
+
 def get_job_summary_from_summary_collection() -> dict:
     """
     Fetch total completed and failed counts from the summary_collection.
@@ -46,10 +143,10 @@ def get_job_summary_from_summary_collection() -> dict:
     """
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
-    collection = db["summary_collection"]  # your summary collection name
+    collection = db["summary_collection"]
 
     try:
-        summary = collection.find_one()  # get the first (and only) summary document
+        summary = collection.find_one()
         if summary:
             total_completed = summary.get("total_completed", 0)
             total_failed = summary.get("total_failed", 0)
