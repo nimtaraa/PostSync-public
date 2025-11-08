@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.route import router as agent_router
-from app.routes.authRoute import router as auth_router
+from app.routes.authRoute import router as auth_router0
 import uvicorn
 
 app = FastAPI(title="LinkedIn AI Posting Agent")
