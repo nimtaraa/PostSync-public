@@ -28,11 +28,23 @@ export const Dashboard = () => {
   const [niche, setNiche] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [pulseScale, setPulseScale] = useState(1);
+  const [showExecutionModal, setShowExecutionModal] = useState(false);
+  const [executionStep, setExecutionStep] = useState(0);
+  const [executionProgress, setExecutionProgress] = useState(0);
 
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
   const successRate = jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0;
+
+  const executionSteps = [
+    { label: 'Initializing Agent', emoji: '🚀', color: 'from-blue-500 to-cyan-500' },
+    { label: 'Analyzing Niche', emoji: '🧠', color: 'from-purple-500 to-pink-500' },
+    { label: 'Generating Content', emoji: '✨', color: 'from-yellow-500 to-orange-500' },
+    { label: 'Optimizing Post', emoji: '⚡', color: 'from-green-500 to-emerald-500' },
+    { label: 'Scheduling Upload', emoji: '📅', color: 'from-indigo-500 to-purple-500' },
+    { label: 'Finalizing...', emoji: '🎉', color: 'from-pink-500 to-rose-500' },
+  ];
 
   // Pulse animation for running jobs
   useEffect(() => {
@@ -44,6 +56,43 @@ export const Dashboard = () => {
     }
   }, [runningJobs]);
 
+  // Execution animation sequence
+  useEffect(() => {
+    if (starting && showExecutionModal) {
+      setExecutionStep(0);
+      setExecutionProgress(0);
+      
+      const stepDuration = 1500; // 1.5 seconds per step
+      const progressInterval = setInterval(() => {
+        setExecutionProgress(prev => {
+          if (prev >= 100) return 100;
+          return prev + 2;
+        });
+      }, 30);
+
+      const stepInterval = setInterval(() => {
+        setExecutionStep(prev => {
+          if (prev >= executionSteps.length - 1) {
+            clearInterval(stepInterval);
+            clearInterval(progressInterval);
+            setTimeout(() => {
+              setShowExecutionModal(false);
+              setExecutionStep(0);
+              setExecutionProgress(0);
+            }, 2000);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, stepDuration);
+
+      return () => {
+        clearInterval(stepInterval);
+        clearInterval(progressInterval);
+      };
+    }
+  }, [starting, showExecutionModal]);
+
   const handleStartAgentClick = () => {
     if (!user || !user.accessToken) {
       alert("Error: You are not logged in or your token is missing.");
@@ -53,6 +102,7 @@ export const Dashboard = () => {
       alert("Please enter a niche for the agent.");
       return;
     }
+    setShowExecutionModal(true);
     startAgent(niche, user.accessToken);
   };
 
@@ -340,6 +390,138 @@ export const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Super Animated Execution Modal */}
+      {showExecutionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl animate-fade-in">
+          {/* Animated particles in background */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-float-particle"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  animationDuration: `${3 + Math.random() * 2}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Main execution card */}
+          <div className="relative max-w-lg w-full mx-4">
+            {/* Pulsing rings around card */}
+            <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/30 animate-ping-slow" />
+            <div className="absolute inset-0 rounded-3xl border border-cyan-500/20 animate-pulse" style={{animationDelay: '0.5s'}} />
+            <div className="absolute inset-0 rounded-3xl border border-purple-500/20 animate-pulse" style={{animationDelay: '1s'}} />
+
+            {/* Card content */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 border border-white/10 shadow-2xl">
+              {/* Animated gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl animate-gradient" />
+
+              {/* Content */}
+              <div className="relative">
+                {/* Emoji animation */}
+                <div className="flex justify-center mb-6">
+                  <div className="relative">
+                    {/* Multiple rotating rings */}
+                    <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" />
+                    <div className="absolute inset-2 w-28 h-28 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin-slow" />
+                    <div className="absolute inset-4 w-24 h-24 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{animationDirection: 'reverse'}} />
+                    
+                    {/* Center emoji with bounce */}
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                      <div className="text-6xl animate-bounce-float">
+                        {executionSteps[executionStep].emoji}
+                      </div>
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step label */}
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-white mb-2 animate-fade-in">
+                    {executionSteps[executionStep].label}
+                  </h3>
+                  <p className="text-sm text-white/50 animate-pulse">
+                    Processing your request for: <span className="text-white/80 font-semibold">{niche}</span>
+                  </p>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-white/40 font-medium">Progress</span>
+                    <span className="text-xs text-white/60 font-bold">{Math.round(executionProgress)}%</span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full bg-gradient-to-r ${executionSteps[executionStep].color} rounded-full transition-all duration-300 ease-out relative overflow-hidden`}
+                      style={{width: `${executionProgress}%`}}
+                    >
+                      {/* Shimmer effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-fast" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Steps indicator */}
+                <div className="flex justify-center gap-2">
+                  {executionSteps.map((step, index) => (
+                    <div
+                      key={index}
+                      className={`transition-all duration-300 ${
+                        index === executionStep
+                          ? 'w-8 h-2 bg-gradient-to-r ' + step.color
+                          : index < executionStep
+                          ? 'w-2 h-2 bg-white/60'
+                          : 'w-2 h-2 bg-white/20'
+                      } rounded-full`}
+                    />
+                  ))}
+                </div>
+
+                {/* Fun messages */}
+                <div className="mt-6 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span className="text-xs text-white/60 animate-pulse">
+                      {executionStep === 0 && "Warming up the engines..."}
+                      {executionStep === 1 && "Reading your mind... 🔮"}
+                      {executionStep === 2 && "Sprinkling some AI magic..."}
+                      {executionStep === 3 && "Making it perfect..."}
+                      {executionStep === 4 && "Almost there..."}
+                      {executionStep === 5 && "Done! 🎊"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fireworks on completion */}
+                {executionStep === executionSteps.length - 1 && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-1 h-1 bg-yellow-400 rounded-full animate-firework"
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
