@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 interface User {
   id: string;
@@ -105,8 +105,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(userData);
 
       // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
+window.location.href = '/dashboard';      
     } catch (error) {
       console.error('OAuth callback error:', error);
       logout();
