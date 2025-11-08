@@ -7,13 +7,14 @@ import { useAgentStart } from '../hooks/useAgentStart';
 import { JobStatusCard } from './JobStatusCard';
 import {
   LogOut,
-  Sparkles,
   TrendingUp,
   Activity,
   CheckCircle2,
   Loader2,
   PlayCircle,
-  Zap,
+  AlertCircle,
+  Clock,
+  BarChart3,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -26,6 +27,7 @@ export const Dashboard = () => {
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
+  const successRate = jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0;
 
   const handleStartAgentClick = () => {
     if (!user || !user.accessToken) {
@@ -40,47 +42,35 @@ export const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '0.5s'}} />
-      </div>
-
-      {/* Navbar with 3D depth */}
-      <nav className="relative bg-slate-900/80 border-b border-slate-700/50 shadow-2xl backdrop-blur-2xl sticky top-0 z-50">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-cyan-500/5 to-purple-500/5" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-4">
-              {/* Logo with 3D effect */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity" />
-                <div className="relative bg-gradient-to-br from-blue-500 to-cyan-500 p-3 rounded-2xl shadow-2xl transform transition-transform group-hover:scale-110 group-hover:rotate-3">
-                  <Sparkles className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-[#0a0a0b]">
+      {/* Subtle grid background */}
+      <div className="fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_80%)]" />
+      
+      {/* Navbar */}
+      <nav className="relative border-b border-white/5 bg-[#0a0a0b]/80 backdrop-blur-xl">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-[#0a0a0b] rounded-sm" />
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
-                  LinkedIn Studio
-                </h1>
-                <p className="text-xs text-slate-400 font-medium tracking-wide flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
-                  Automated Content Pipeline
-                </p>
+                <h1 className="text-base font-semibold text-white tracking-tight">LinkedIn Studio</h1>
+                <p className="text-[10px] text-white/40 font-medium">Production Environment</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-700/50">
-                <p className="text-sm font-bold text-white">{user?.email}</p>
-                <p className="text-xs text-emerald-400 font-medium">● OAuth Connected</p>
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-white/60 font-medium">{user?.email}</span>
               </div>
               <button
                 onClick={signOut}
-                className="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all font-semibold border border-slate-700 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white/80 rounded-lg transition-all text-sm font-medium border border-white/5"
               >
-                <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
@@ -88,157 +78,187 @@ export const Dashboard = () => {
         </div>
       </nav>
 
-      {/* Dashboard Body */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-12 gap-6">
+      {/* Main Content */}
+      <div className="relative max-w-[1400px] mx-auto px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-8 gap-6">
           <div>
-            <h2 className="text-4xl font-black text-white mb-3 tracking-tight">
-              Workflow Dashboard
-            </h2>
-            <p className="text-slate-400 text-lg font-medium">
-              Monitor your automated content generation in real-time
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-5 h-5 text-white/40" />
+              <span className="text-xs font-medium text-white/40 uppercase tracking-wider">Analytics Dashboard</span>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-1 tracking-tight">Automation Overview</h2>
+            <p className="text-sm text-white/50">Real-time monitoring and execution control</p>
           </div>
 
-          {/* Input and Button with 3D effect */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity" />
+          {/* Control Panel */}
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-white/40 font-medium">Target Niche</label>
               <input
                 type="text"
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
-                placeholder="Enter your niche (e.g., AI)"
-                className="relative px-5 py-3 bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-xl shadow-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all font-medium"
+                placeholder="e.g., Artificial Intelligence"
+                className="w-64 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/30 focus:bg-white/[0.07] focus:border-blue-500/50 focus:outline-none transition-all"
               />
             </div>
             <button
               onClick={handleStartAgentClick}
               disabled={starting}
-              className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all shadow-2xl overflow-hidden transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white rounded-lg transition-all text-sm font-semibold shadow-lg shadow-blue-600/20 disabled:cursor-not-allowed group overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 opacity-100 group-hover:opacity-90 transition-opacity" />
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 blur-xl opacity-75" />
-              <div className="relative flex items-center gap-2">
-                {starting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Starting...
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    Start Agent
-                  </>
-                )}
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+              {starting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Initializing</span>
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-4 h-4" />
+                  <span>Execute Agent</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Agent Start Feedback */}
+        {/* Status Message */}
         {(startMessage || startError) && (
-          <div
-            className={`mb-8 p-5 rounded-2xl border text-sm font-semibold backdrop-blur-sm shadow-lg ${
-              startError
-                ? 'bg-red-500/20 border-red-500/30 text-red-400'
-                : 'bg-green-500/20 border-green-500/30 text-green-400'
-            }`}
-          >
-            {startError ? startError : startMessage}
+          <div className={`mb-6 p-4 rounded-lg border backdrop-blur-sm ${
+            startError
+              ? 'bg-red-500/10 border-red-500/20 text-red-400'
+              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+          }`}>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <AlertCircle className="w-4 h-4" />
+              {startError ? startError : startMessage}
+            </div>
           </div>
         )}
 
-        {/* Job Summary Cards with 3D depth */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Completed Card */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 to-green-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
-            <div className="relative bg-gradient-to-br from-emerald-500/20 to-green-500/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-between mb-6">
-                <div className="bg-emerald-500/20 p-4 rounded-2xl border border-emerald-500/30 shadow-lg">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-                </div>
-                <span className="text-5xl font-black text-white tracking-tight">{completedJobs}</span>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* Total Jobs */}
+          <div className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-2 bg-white/5 rounded-lg">
+                <Activity className="w-5 h-5 text-white/60" />
               </div>
-              <h3 className="font-bold text-emerald-400 mb-2 text-lg">Completed Jobs</h3>
-              <p className="text-sm text-slate-400 font-medium">Successfully published to LinkedIn</p>
+              <span className="text-2xl font-bold text-white tracking-tight">{jobs.length}</span>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wide">Total Executions</p>
+              <p className="text-xs text-white/30">All time</p>
             </div>
           </div>
 
-          {/* Running Card */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-cyan-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
-            <div className="relative bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-between mb-6">
-                <div className="bg-blue-500/20 p-4 rounded-2xl border border-blue-500/30 shadow-lg animate-pulse">
-                  <Activity className="w-10 h-10 text-blue-400" />
-                </div>
-                <span className="text-5xl font-black text-white tracking-tight">{runningJobs}</span>
+          {/* Completed */}
+          <div className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
-              <h3 className="font-bold text-blue-400 mb-2 text-lg">Running Jobs</h3>
-              <p className="text-sm text-slate-400 font-medium">Currently processing content</p>
+              <span className="text-2xl font-bold text-white tracking-tight">{completedJobs}</span>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wide">Completed</p>
+              <div className="flex items-center gap-1.5">
+                <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{width: `${(completedJobs / jobs.length) * 100}%`}} />
+                </div>
+                <span className="text-xs text-emerald-400/60">{jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0}%</span>
+              </div>
             </div>
           </div>
 
-          {/* Total Card */}
-          <div className="group relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
-            <div className="relative bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-between mb-6">
-                <div className="bg-purple-500/20 p-4 rounded-2xl border border-purple-500/30 shadow-lg">
-                  <TrendingUp className="w-10 h-10 text-purple-400" />
-                </div>
-                <span className="text-5xl font-black text-white tracking-tight">{jobs.length}</span>
+          {/* Running */}
+          <div className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Clock className="w-5 h-5 text-blue-400" />
               </div>
-              <h3 className="font-bold text-purple-400 mb-2 text-lg">Total Jobs</h3>
-              <p className="text-sm text-slate-400 font-medium">{failedJobs} failed • All time stats</p>
+              <span className="text-2xl font-bold text-white tracking-tight">{runningJobs}</span>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wide">In Progress</p>
+              <div className="flex items-center gap-1.5">
+                {runningJobs > 0 && (
+                  <>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-xs text-blue-400/60">Active</span>
+                  </>
+                )}
+                {runningJobs === 0 && <span className="text-xs text-white/30">Idle</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Success Rate */}
+          <div className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-purple-400" />
+              </div>
+              <span className="text-2xl font-bold text-white tracking-tight">{successRate}%</span>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wide">Success Rate</p>
+              <p className="text-xs text-white/30">{failedJobs} failed</p>
             </div>
           </div>
         </div>
 
-        {/* Recent Jobs Section */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-black text-white mb-2">Recent Jobs</h3>
-          <p className="text-slate-400 font-medium">Track your latest automated workflows</p>
-        </div>
+        {/* Jobs Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-0.5">Execution History</h3>
+              <p className="text-xs text-white/40">Recent automation jobs and their status</p>
+            </div>
+            {jobs.length > 0 && (
+              <span className="text-xs text-white/30 font-medium">{jobs.length} total records</span>
+            )}
+          </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="relative">
-              <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-xl animate-pulse" />
-              <Loader2 className="relative w-16 h-16 text-blue-400 animate-spin mb-6" />
-            </div>
-            <p className="text-slate-300 font-bold text-lg">Loading job statuses...</p>
-            <p className="text-slate-500 text-sm mt-2">Please wait</p>
-          </div>
-        ) : error ? (
-          <div className="relative group">
-            <div className="absolute inset-0 bg-red-500/20 rounded-2xl blur-xl opacity-50" />
-            <div className="relative bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center backdrop-blur-sm">
-              <p className="text-red-400 font-bold text-lg mb-2">Error loading jobs</p>
-              <p className="text-red-300/80 text-sm">{error}</p>
-            </div>
-          </div>
-        ) : jobs.length === 0 ? (
-          <div className="relative group">
-            <div className="absolute inset-0 bg-slate-700/30 rounded-3xl blur-xl opacity-50" />
-            <div className="relative bg-slate-800/50 backdrop-blur-xl border-2 border-dashed border-slate-700 rounded-3xl p-16 text-center">
-              <div className="bg-gradient-to-br from-slate-700 to-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-                <Activity className="w-10 h-10 text-slate-400" />
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 bg-white/[0.02] border border-white/5 rounded-xl">
+              <div className="relative mb-4">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                <div className="absolute inset-0 animate-ping">
+                  <Loader2 className="w-8 h-8 text-blue-500/20" />
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">No jobs yet</h3>
-              <p className="text-slate-400 font-medium">Start your first agent to see automated jobs here</p>
+              <p className="text-sm text-white/60 font-medium">Loading execution data...</p>
+              <p className="text-xs text-white/30 mt-1">Please wait</p>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {jobs.map((job) => (
-              <JobStatusCard key={job.id} job={job} />
-            ))}
-          </div>
-        )}
+          ) : error ? (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-400 mb-1">Failed to load data</p>
+                  <p className="text-xs text-red-400/70">{error}</p>
+                </div>
+              </div>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-12 text-center">
+              <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-white/20" />
+              </div>
+              <h3 className="text-base font-semibold text-white/80 mb-1">No execution history</h3>
+              <p className="text-sm text-white/40">Start your first automation to see results here</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {jobs.map((job) => (
+                <JobStatusCard key={job.id} job={job} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
