@@ -1,3 +1,5 @@
+# FILE: app/services/agent_graph.py
+
 from __future__ import annotations
 import os
 from typing import Optional, Dict
@@ -31,7 +33,8 @@ logger = get_logger(__name__)
 MAX_ITERATIONS = 1
 llm = ChatOpenAI(model="gpt-4o", temperature=0.7, openai_api_key=OPENAI_API_KEY)
 
-# === LangGraph Tools (already decorated) ===
+# === LangGraph Tools ===
+# These are the tools that will be called with .invoke()
 posting_tools = [post_to_linkedin, generate_gemini_image, save_post]
 posting_agent = create_react_agent(model=llm, tools=posting_tools)
 
@@ -42,48 +45,51 @@ posting_agent = create_react_agent(model=llm, tools=posting_tools)
 def topic_generator_node(state: AgentState) -> Dict[str, Optional[str]]:
     """Generate a topic for the given niche."""
     try:
+        niche = state.get("niche") # Use .get() for safety
         prompt = ChatPromptTemplate.from_messages([
             ("system", TOPIC_GENERATOR_SYSTEM_PROMPT),
-            ("user", TOPIC_GENERATOR_USER_PROMPT.format(niche=state.niche)),
+            ("user", TOPIC_GENERATOR_USER_PROMPT.format(niche=niche)),
         ])
         chain = prompt | llm
-        result = chain.invoke({"niche": state.niche})
+        result = chain.invoke({"niche": niche})
         topic = result.content.strip()
         logger.info("✅ Topic generated: %s", topic)
-        return {"topic": topic, "current_node": "topic_generator"}
+        return {"topic": topic}
     except Exception as e:
         logger.exception("❌ Topic generation failed: %s", e)
-        fallback = f"{state.niche} insight {datetime.utcnow().isoformat()}"
-        return {"topic": fallback, "current_node": "topic_generator"}
+        fallback = f"{state.get('niche')} insight {datetime.utcnow().isoformat()}"
+        return {"topic": fallback}
 
 
 def content_creator_node(state: AgentState) -> Dict[str, Optional[str]]:
     """Generate a LinkedIn post draft from the topic."""
     try:
+        topic = state.get("topic")
         prompt = ChatPromptTemplate.from_messages([
             ("system", CONTENT_CREATOR_SYSTEM_PROMPT),
-            ("user", CONTENT_CREATOR_USER_PROMPT.format(topic=state.topic)),
+            ("user", CONTENT_CREATOR_USER_PROMPT.format(topic=topic)),
         ])
         chain = prompt | llm
-        result = chain.invoke({"topic": state.topic})
+        result = chain.invoke({"topic": topic})
         post_draft = result.content.strip()
         logger.info("✍️ Post draft created successfully.")
-        return {"post_draft": post_draft, "current_node": "content_creator"}
+        return {"post_draft": post_draft}
     except Exception as e:
         logger.exception("❌ Content creation failed: %s", e)
-        return {"post_draft": f"{state.topic} — quick insight", "current_node": "content_creator"}
+        return {"post_draft": f"{state.get('topic')} — quick insight"}
 
 
 def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
     """Review and refine post drafts until approved or max iterations reached."""
-    current_iter = state.iteration_count + 1
+    current_iter = state.get("iteration_count", 0) + 1
+    post_draft = state.get("post_draft")
     try:
         prompt = ChatPromptTemplate.from_messages([
             ("system", REVIEWER_SYSTEM_PROMPT),
-            ("user", f"Critique this draft:\n\n{state.post_draft}"),
+            ("user", f"Critique this draft:\n\n{post_draft}"),
         ])
         chain = prompt | llm
-        result = chain.invoke({"post_draft": state.post_draft})
+        result = chain.invoke({"post_draft": post_draft})
         content = result.content.strip()
     except Exception as e:
         logger.exception("⚠️ Review step failed: %s", e)
@@ -95,8 +101,7 @@ def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
         logger.info("✅ Post approved.")
         return {
             "is_approved": True,
-            "final_post": state.post_draft,
-            "current_node": "reviewer",
+            "final_post": post_draft,
             "iteration_count": current_iter,
         }
     else:
@@ -104,26 +109,35 @@ def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
         return {
             "post_draft": content,
             "is_approved": False,
-            "current_node": "reviewer",
             "iteration_count": current_iter,
         }
 
 
 def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
     """Generate image using Gemini and upload to LinkedIn."""
-    if not state.final_post:
+    final_post = state.get("final_post")
+    if not final_post:
         logger.warning("⚠️ No final_post available, skipping image generation.")
-        return {"image_asset_urn": None, "current_node": "image_generation"}
+        return {"image_asset_urn": None}
 
-    TEMP_IMAGE_PATH = "temp_dummy_image.png"  # Hardcoded temp path
+    TEMP_IMAGE_PATH = "temp_dummy_image.png" 
 
     try:
+        # --- 1. GET CREDENTIALS FROM STATE ---
+        access_token = state.get("linkedin_access_token")
+        person_urn = state.get("person_urn")
+
+        if not access_token or not person_urn:
+            logger.error("❌ Missing credentials in image_generation_node.")
+            return {"image_asset_urn": None}
+        
         # 1️⃣ Generate dummy image bytes
-        image_bytes = generate_gemini_image.invoke(state.final_post)
+        #    We assume generate_gemini_image is a @tool that takes a string
+        image_bytes = generate_gemini_image.invoke(final_post)
 
         if not image_bytes:
             logger.warning("⚠️ Image generation returned no data. Skipping image.")
-            return {"image_asset_urn": None, "current_node": "image_generation"}
+            return {"image_asset_urn": None}
 
         # 2️⃣ Save bytes temporarily to disk
         with open(TEMP_IMAGE_PATH, "wb") as f:
@@ -131,7 +145,13 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
         logger.info(f"✅ Dummy image saved at {TEMP_IMAGE_PATH}")
 
         # 3️⃣ Upload to LinkedIn
-        asset_urn = upload_media_to_linkedin(TEMP_IMAGE_PATH)
+        # --- 2. PASS CREDENTIALS TO THE UPLOAD FUNCTION ---
+        #    We assume upload_media_to_linkedin is a regular function, not a @tool
+        asset_urn = upload_media_to_linkedin(
+            file_path=TEMP_IMAGE_PATH,
+            access_token=access_token,
+            person_urn=person_urn
+        )
 
         # 4️⃣ Clean up temp file
         if os.path.exists(TEMP_IMAGE_PATH):
@@ -141,53 +161,65 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
         # 5️⃣ Return result
         if asset_urn and asset_urn.startswith("urn:li:asset:"):
             logger.info("🖼️ Image asset URN generated: %s", asset_urn)
-            return {"image_asset_urn": asset_urn, "current_node": "image_generation"}
+            return {"image_asset_urn": asset_urn}
         else:
             logger.warning("⚠️ Image upload failed, post will be text-only.")
-            return {"image_asset_urn": None, "current_node": "image_generation"}
+            return {"image_asset_urn": None}
 
     except Exception as e:
         logger.exception("❌ Image generation error: %s", e)
-        return {"image_asset_urn": None, "current_node": "image_generation"}
+        return {"image_asset_urn": None}
 
 
 def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
     """Post content to LinkedIn and save record in MongoDB."""
-    if not state.final_post:
-        logger.error("❌ No final_post to publish.")
-        return {"messages": [{"role": "system", "content": "post_failed"}], "current_node": "post_executor"}
+    
+    # --- 1. GET ALL DATA FROM STATE ---
+    final_post = state.get("final_post")
+    access_token = state.get("linkedin_access_token")
+    person_urn = state.get("person_urn")
+    user_id = state.get("user_id")
+    niche = state.get("niche")
+    image_asset_urn = state.get("image_asset_urn")
+    # topic = state.get("topic") # Get topic if you want to save it
+
+    if not all([final_post, access_token, person_urn, user_id, niche]):
+        logger.error(f"❌ Missing critical data in post_executor_node. User: {user_id}")
+        return {"messages": [{"role": "system", "content": "post_failed"}]}
 
     try:
         # 1️⃣ Post to LinkedIn
+        # --- 2. PASS ALL ARGS TO post_to_linkedin.invoke ---
         linkedin_response = post_to_linkedin.invoke({
-            "post_content": state.final_post,
-            "image_urn": state.image_asset_urn
+            "post_content": final_post,
+            "access_token": access_token,
+            "person_urn": person_urn,
+            "image_urn": image_asset_urn
         })
         logger.info("✅ LinkedIn post successful: %s", linkedin_response)
 
         # 2️⃣ Save post to MongoDB
+        # --- 3. PASS ALL ARGS TO save_post.invoke ---
         save_post.invoke({
+            "linkedin_user_id": user_id,
             "platform": "LinkedIn",
-            "niche": state.niche,
-            "topic": state.topic,
-            "content": state.final_post,
-            "image_urn": state.image_asset_urn,
-            "posted_at": datetime.now(timezone.utc).isoformat(),
-            "linkedin_response": linkedin_response,
+            "content": final_post,
+            "niche": niche,
+            # "image_data": None # We save the URN, not the bytes
         })
         logger.info(POST_EXECUTOR_SUCCESS_MESSAGE)
 
-        return {"messages": [{"role": "system", "content": "post_success"}], "current_node": "post_executor"}
+        return {"messages": [{"role": "system", "content": "post_success"}]}
     except Exception as e:
         logger.exception(POST_EXECUTOR_FAILURE_MESSAGE.format(error=e))
-        return {"messages": [{"role": "system", "content": "post_failed"}], "current_node": "post_executor"}
+        return {"messages": [{"role": "system", "content": "post_failed"}]}
 
 
 # ------------------------------------------------------------
 # 🧭 Decision Function
 # ------------------------------------------------------------
 def decide_to_rework(state: AgentState) -> str:
-    return "image_generation" if state.is_approved else "content_creator"
+    return "image_generation" if state.get("is_approved") else "content_creator"
 
 
 # ------------------------------------------------------------
