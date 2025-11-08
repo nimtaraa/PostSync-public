@@ -1,13 +1,13 @@
 # FILE: app/services/mongodb_service.py
 
 from pymongo import MongoClient
-from typing import List, Optional, Dict, Any # <-- ADDED
+from typing import List, Optional, Dict, Any  # <-- THIS IS THE FIX
 from app.utils.config import MONGO_URI, DB_NAME
 from app.models.post import Post
 from app.utils.constants import POST_SAVE_ERROR
 from app.utils.logger import get_logger
 from langchain.tools import tool
-from datetime import datetime # <-- ADDED
+from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -164,13 +164,19 @@ def get_job_summary_from_summary_collection(linkedin_user_id: str) -> dict:
     collection = get_user_collection(linkedin_user_id, "summary")
 
     try:
-        summary = collection.find_one()
+        summary = collection.find_one({"_id": "user_credentials"}, {"_id": 0, "total_completed": 1, "total_failed": 1})
         if summary:
             total_completed = summary.get("total_completed", 0)
             total_failed = summary.get("total_failed", 0)
         else:
-            total_completed = 0
-            total_failed = 0
+            # Check for old summary format (if not using 'user_credentials' doc)
+            summary_old = collection.find_one()
+            if summary_old:
+                total_completed = summary_old.get("total_completed", 0)
+                total_failed = summary_old.get("total_failed", 0)
+            else:
+                total_completed = 0
+                total_failed = 0
 
         logger.info(f"Fetched summary for user {linkedin_user_id}: completed={total_completed}, failed={total_failed}")
         return {"total_completed": total_completed, "total_failed": total_failed}
@@ -191,8 +197,9 @@ def update_job_summary(linkedin_user_id: str, field: str, increment: int = 1) ->
     collection = get_user_collection(linkedin_user_id, "summary")
 
     try:
+        # We store summary stats in the *same* doc as credentials for simplicity
         result = collection.find_one_and_update(
-            {},
+            {"_id": "user_credentials"}, 
             {"$inc": {field: increment}},
             upsert=True,
             return_document=True
