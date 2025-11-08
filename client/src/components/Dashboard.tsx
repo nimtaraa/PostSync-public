@@ -1,6 +1,7 @@
 // FILE: src/components/Dashboard.tsx
-// (Make sure this file is at this path)
 
+// 1. Import useState
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCronJobStatus } from '../hooks/useCronJobStatus';
 import { useAgentStart } from '../hooks/useAgentStart';
@@ -19,27 +20,33 @@ export const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { jobs, loading, error } = useCronJobStatus(user?.id || null);
   const { startAgent, starting, startError, startMessage } = useAgentStart();
+  
+  // 2. Add state for the niche text field
+  const [niche, setNiche] = useState('');
 
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
 
-  // --- THIS IS THE FIX ---
-  // Create the onClick handler function
+  // 3. Update the click handler
   const handleStartAgentClick = () => {
-    // 1. Check if the user and token exist
+    // Check for token
     if (!user || !user.accessToken) {
       alert("Error: You are not logged in or your token is missing.");
       return;
     }
-    // 2. Call startAgent with both the niche and the token
-    startAgent("AI Content", user.accessToken);
+    // Check if niche is empty
+    if (!niche.trim()) {
+      alert("Please enter a niche for the agent.");
+      return;
+    }
+    // Call startAgent with the niche from state
+    startAgent(niche, user.accessToken);
   };
-  // --- END OF FIX ---
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Navbar */}
+      {/* Navbar (Same as before) */}
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10 backdrop-blur-lg bg-white/95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -52,7 +59,6 @@ export const Dashboard = () => {
                 <p className="text-xs text-slate-600">Automated Content Pipeline</p>
               </div>
             </div>
-
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-slate-900">{user?.email}</p>
@@ -73,7 +79,7 @@ export const Dashboard = () => {
       {/* Dashboard Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
           <div>
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Workflow Dashboard</h2>
             <p className="text-slate-600">
@@ -81,31 +87,40 @@ export const Dashboard = () => {
             </p>
           </div>
 
-          {/* 3. Update the button's onClick to use the new handler */}
-          <button
-            onClick={handleStartAgentClick}
-            disabled={starting}
-            className={`mt-4 sm:mt-0 inline-flex items-center gap-2 px-5 py-2 rounded-xl font-semibold text-white transition-all shadow-md ${
-              starting
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
-            }`}
-          >
-            {starting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Starting Agent...
-              </>
-            ) : (
-              <>
-                <PlayCircle className="w-5 h-5" />
-                Start Agent
-              </>
-            )}
-          </button>
+          {/* 4. Add the input field and button */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <input
+              type="text"
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="Enter your niche (e.g., AI)"
+              className="px-4 py-2 border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
+            />
+            <button
+              onClick={handleStartAgentClick}
+              disabled={starting}
+              className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl font-semibold text-white transition-all shadow-md ${
+                starting
+                  ? 'bg-blue-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
+              }`}
+            >
+              {starting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <PlayCircle className="w-5 h-5" />
+                  Start Agent
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Agent Start Feedback */}
+        {/* Agent Start Feedback (Same as before) */}
         {(startMessage || startError) && (
           <div
             className={`mb-6 p-4 rounded-lg border text-sm font-medium ${
@@ -118,7 +133,7 @@ export const Dashboard = () => {
           </div>
         )}
 
-        {/* Job Summary Cards (rest of the file is the same...) */}
+        {/* Job Summary Cards (Same as before) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
@@ -148,7 +163,7 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Recent Jobs */}
+        {/* Recent Jobs (Same as before) */}
         <div className="mb-6">
           <h3 className="text-xl font-bold text-slate-900 mb-4">Recent Jobs</h3>
         </div>
@@ -169,8 +184,7 @@ export const Dashboard = () => {
               <Activity className="w-8 h-8 text-slate-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">No jobs yet</h3>
-            <p className="text-slate-600">Your automated content jobs will appear here</p>
-          </div>
+<p className="text-slate-600">Your automated content jobs will appear here</p>          </div>
         ) : (
           <div className="space-y-6">
             {jobs.map((job) => (
