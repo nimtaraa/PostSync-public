@@ -1,17 +1,29 @@
-import { LogIn, Sparkles, Loader2 } from 'lucide-react';
+// FILE: src/components/LoginPage.tsx
+
+import { LogIn, Sparkles, Loader2, Lock, Zap, TrendingUp, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const LoginPage = () => {
   const { signInWithLinkedIn } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+      setMousePosition({ x, y });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleLogin = async () => {
     try {
       setLoading(true);
-      // call your LinkedIn OAuth login
       await signInWithLinkedIn();
-      // don’t set loading false here, because user will be redirected
     } catch (error) {
       console.error('Login error:', error);
       setLoading(false);
@@ -19,82 +31,226 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* subtle animated background grid */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
+    <div className="min-h-screen bg-[#0a0a0b] relative overflow-hidden flex items-center justify-center p-4">
+      {/* Animated gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div 
+          className="absolute top-1/4 -left-48 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float-slow"
+          style={{
+            transform: `translate(${mousePosition.x * 2}px, ${mousePosition.y * 2}px)`
+          }}
+        />
+        <div 
+          className="absolute bottom-1/4 -right-48 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-float-delayed"
+          style={{
+            transform: `translate(${-mousePosition.x * 2}px, ${-mousePosition.y * 2}px)`
+          }}
+        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" />
+      </div>
 
-      <div className="relative max-w-md w-full">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
-          <div className="flex justify-center mb-6">
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-4 rounded-2xl shadow-lg">
-              <Sparkles className="w-10 h-10 text-white" />
+      {/* Grid overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_90%)]" />
+
+      {/* Main content card */}
+      <div 
+        className="relative max-w-5xl w-full z-10"
+        style={{
+          transform: `perspective(1000px) rotateX(${mousePosition.y * 0.5}deg) rotateY(${mousePosition.x * 0.5}deg)`
+        }}
+      >
+        <div className="grid md:grid-cols-2 gap-8 items-center">
+          {/* Left side - Branding */}
+          <div className="hidden md:block space-y-8 animate-fade-in-left">
+            {/* Logo with 3D effect */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-cyan-500/30 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500" />
+              <div className="relative bg-gradient-to-br from-white/[0.07] to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-8 transform-gpu transition-all duration-500 hover:scale-[1.02]">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl blur-md opacity-60" />
+                    <div className="relative w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                      <Sparkles className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-white tracking-tight">LinkedIn Studio</h1>
+                    <p className="text-sm text-white/40 font-medium">Enterprise Grade</p>
+                  </div>
+                </div>
+                
+                <p className="text-white/60 text-sm leading-relaxed mb-6">
+                  Professional automation platform for content creation and distribution across LinkedIn networks.
+                </p>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="text-2xl font-bold text-white mb-1">99.9%</div>
+                    <div className="text-xs text-white/40">Uptime</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="text-2xl font-bold text-white mb-1">10k+</div>
+                    <div className="text-xs text-white/40">Posts</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="text-2xl font-bold text-white mb-1">24/7</div>
+                    <div className="text-xs text-white/40">Support</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Trust badges */}
+            <div className="flex items-center gap-4 pl-2">
+              <div className="flex items-center gap-2 text-white/40 text-sm">
+                <Shield className="w-4 h-4 text-emerald-400" />
+                <span>Enterprise Security</span>
+              </div>
+              <div className="w-1 h-1 rounded-full bg-white/20" />
+              <div className="flex items-center gap-2 text-white/40 text-sm">
+                <Lock className="w-4 h-4 text-blue-400" />
+                <span>OAuth 2.0</span>
+              </div>
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-white text-center mb-2">
-            LinkedIn Content Studio
-          </h1>
+          {/* Right side - Login form */}
+          <div className="animate-fade-in-right">
+            <div className="relative group">
+              {/* Glow effect */}
+              <div className="absolute -inset-1 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500" />
+              
+              {/* Card */}
+              <div className="relative bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20 mb-6">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-xs text-blue-400 font-medium">Secure Authentication</span>
+                  </div>
+                  
+                  <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                    Welcome Back
+                  </h2>
+                  <p className="text-white/50 text-sm">
+                    Sign in to access your automation dashboard
+                  </p>
+                </div>
 
-          <p className="text-slate-300 text-center mb-8">
-            Automate your LinkedIn content creation and posting with AI-powered workflows
-          </p>
+                {/* Features */}
+                <div className="space-y-3 mb-8">
+                  <FeatureItem
+                    icon={Zap}
+                    title="AI-Powered Automation"
+                    description="Intelligent content generation with advanced algorithms"
+                    delay="0s"
+                  />
+                  <FeatureItem
+                    icon={TrendingUp}
+                    title="Real-Time Analytics"
+                    description="Monitor performance metrics and engagement data"
+                    delay="0.1s"
+                  />
+                  <FeatureItem
+                    icon={Lock}
+                    title="Enterprise Security"
+                    description="Bank-level encryption and data protection"
+                    delay="0.2s"
+                  />
+                </div>
 
-          {/* features list */}
-          <div className="space-y-4 mb-8">
-            <Feature
-              color="blue"
-              title="Automated Content Generation"
-              desc="AI-powered posts and images"
-            />
-            <Feature
-              color="cyan"
-              title="Real-time Job Tracking"
-              desc="Monitor every step of your workflow"
-            />
-            <Feature
-              color="teal"
-              title="LinkedIn Integration"
-              desc="Direct publishing to your profile"
-            />
+                {/* Login button */}
+                <button
+                  onClick={handleLogin}
+                  disabled={loading}
+                  className="relative w-full group/btn overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl opacity-100 group-hover/btn:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-xl opacity-0 group-hover/btn:opacity-100 blur-xl transition-all duration-500" />
+                  
+                  <div className="relative flex items-center justify-center gap-3 py-4 px-6 text-white font-semibold">
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Authenticating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="w-5 h-5 group-hover/btn:rotate-12 transition-transform" />
+                        <span>Sign in with LinkedIn</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+
+                {/* Footer */}
+                <div className="mt-6 pt-6 border-t border-white/5">
+                  <p className="text-center text-xs text-white/30 leading-relaxed">
+                    Protected by industry-standard OAuth 2.0 authentication.<br />
+                    Your credentials are never stored on our servers.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile logo */}
+            <div className="md:hidden mt-8 text-center">
+              <div className="inline-flex items-center gap-2 text-white/40 text-sm">
+                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-3 h-3 text-white" />
+                </div>
+                <span>LinkedIn Studio</span>
+              </div>
+            </div>
           </div>
-
-          {/* main login button */}
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <LogIn className="w-5 h-5" />
-                Sign in with OAuth 2.0
-              </>
-            )}
-          </button>
-
-          <p className="text-slate-400 text-xs text-center mt-6">
-            By signing in, you agree to our secure OAuth 2.0 authentication process
-          </p>
         </div>
+      </div>
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white/20 rounded-full animate-float-particle"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${10 + Math.random() * 10}s`,
+            }}
+          />
+        ))}
       </div>
     </div>
   );
 };
 
-// small reusable feature component
-const Feature = ({ color, title, desc }: { color: string; title: string; desc: string }) => (
-  <div className="flex items-start gap-3">
-    <div className={`bg-${color}-500/20 rounded-full p-1 mt-0.5`}>
-      <div className={`w-2 h-2 bg-${color}-400 rounded-full`}></div>
+// Feature item component with smooth animations
+const FeatureItem = ({ 
+  icon: Icon, 
+  title, 
+  description, 
+  delay 
+}: { 
+  icon: any; 
+  title: string; 
+  description: string; 
+  delay: string;
+}) => (
+  <div 
+    className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300 group/item animate-fade-in-up"
+    style={{ animationDelay: delay }}
+  >
+    <div className="relative flex-shrink-0 mt-0.5">
+      <div className="absolute inset-0 bg-blue-500/20 rounded-lg blur-md opacity-0 group-hover/item:opacity-100 transition-opacity" />
+      <div className="relative w-10 h-10 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg flex items-center justify-center group-hover/item:scale-110 transition-transform">
+        <Icon className="w-5 h-5 text-blue-400" />
+      </div>
     </div>
-    <div>
-      <p className="text-white font-medium">{title}</p>
-      <p className="text-slate-400 text-sm">{desc}</p>
+    <div className="flex-1 min-w-0">
+      <h3 className="text-sm font-semibold text-white mb-0.5">{title}</h3>
+      <p className="text-xs text-white/40 leading-relaxed">{description}</p>
     </div>
   </div>
 );
