@@ -11,3 +11,5 @@ tiktoken
 fastapi
 uvicorn
 gunicorn
+pyjwt
+python-jose
