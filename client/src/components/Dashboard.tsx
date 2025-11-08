@@ -1,6 +1,5 @@
 // FILE: src/components/Dashboard.tsx
 
-// 1. Import useState
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCronJobStatus } from '../hooks/useCronJobStatus';
@@ -14,6 +13,7 @@ import {
   CheckCircle2,
   Loader2,
   PlayCircle,
+  Zap,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -21,54 +21,66 @@ export const Dashboard = () => {
   const { jobs, loading, error } = useCronJobStatus(user?.id || null);
   const { startAgent, starting, startError, startMessage } = useAgentStart();
   
-  // 2. Add state for the niche text field
   const [niche, setNiche] = useState('');
 
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
 
-  // 3. Update the click handler
   const handleStartAgentClick = () => {
-    // Check for token
     if (!user || !user.accessToken) {
       alert("Error: You are not logged in or your token is missing.");
       return;
     }
-    // Check if niche is empty
     if (!niche.trim()) {
       alert("Please enter a niche for the agent.");
       return;
     }
-    // Call startAgent with the niche from state
     startAgent(niche, user.accessToken);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Navbar (Same as before) */}
-      <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10 backdrop-blur-lg bg-white/95">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-2 rounded-xl shadow-md">
-                <Sparkles className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '0.5s'}} />
+      </div>
+
+      {/* Navbar with 3D depth */}
+      <nav className="relative bg-slate-900/80 border-b border-slate-700/50 shadow-2xl backdrop-blur-2xl sticky top-0 z-50">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-cyan-500/5 to-purple-500/5" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center gap-4">
+              {/* Logo with 3D effect */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity" />
+                <div className="relative bg-gradient-to-br from-blue-500 to-cyan-500 p-3 rounded-2xl shadow-2xl transform transition-transform group-hover:scale-110 group-hover:rotate-3">
+                  <Sparkles className="w-7 h-7 text-white" />
+                </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">LinkedIn Studio</h1>
-                <p className="text-xs text-slate-600">Automated Content Pipeline</p>
+                <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
+                  LinkedIn Studio
+                </h1>
+                <p className="text-xs text-slate-400 font-medium tracking-wide flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  Automated Content Pipeline
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-slate-900">{user?.email}</p>
-                <p className="text-xs text-slate-600">OAuth Connected</p>
+              <div className="text-right hidden sm:block bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-700/50">
+                <p className="text-sm font-bold text-white">{user?.email}</p>
+                <p className="text-xs text-emerald-400 font-medium">● OAuth Connected</p>
               </div>
               <button
                 onClick={signOut}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+                className="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all font-semibold border border-slate-700 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                 <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
@@ -77,114 +89,149 @@ export const Dashboard = () => {
       </nav>
 
       {/* Dashboard Body */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-12 gap-6">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Workflow Dashboard</h2>
-            <p className="text-slate-600">
-              Monitor your automated content generation jobs in real-time
+            <h2 className="text-4xl font-black text-white mb-3 tracking-tight">
+              Workflow Dashboard
+            </h2>
+            <p className="text-slate-400 text-lg font-medium">
+              Monitor your automated content generation in real-time
             </p>
           </div>
 
-          {/* 4. Add the input field and button */}
+          {/* Input and Button with 3D effect */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <input
-              type="text"
-              value={niche}
-              onChange={(e) => setNiche(e.target.value)}
-              placeholder="Enter your niche (e.g., AI)"
-              className="px-4 py-2 border border-slate-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
-            />
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-700 to-slate-800 rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity" />
+              <input
+                type="text"
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                placeholder="Enter your niche (e.g., AI)"
+                className="relative px-5 py-3 bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-xl shadow-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none transition-all font-medium"
+              />
+            </div>
             <button
               onClick={handleStartAgentClick}
               disabled={starting}
-              className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl font-semibold text-white transition-all shadow-md ${
-                starting
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600'
-              }`}
+              className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all shadow-2xl overflow-hidden transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
             >
-              {starting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="w-5 h-5" />
-                  Start Agent
-                </>
-              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 opacity-100 group-hover:opacity-90 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 blur-xl opacity-75" />
+              <div className="relative flex items-center gap-2">
+                {starting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    Start Agent
+                  </>
+                )}
+              </div>
             </button>
           </div>
         </div>
 
-        {/* Agent Start Feedback (Same as before) */}
+        {/* Agent Start Feedback */}
         {(startMessage || startError) && (
           <div
-            className={`mb-6 p-4 rounded-lg border text-sm font-medium ${
+            className={`mb-8 p-5 rounded-2xl border text-sm font-semibold backdrop-blur-sm shadow-lg ${
               startError
-                ? 'bg-red-50 border-red-200 text-red-700'
-                : 'bg-green-50 border-green-200 text-green-700'
+                ? 'bg-red-500/20 border-red-500/30 text-red-400'
+                : 'bg-green-500/20 border-green-500/30 text-green-400'
             }`}
           >
             {startError ? startError : startMessage}
           </div>
         )}
 
-        {/* Job Summary Cards (Same as before) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <CheckCircle2 className="w-8 h-8 opacity-80" />
-              <span className="text-3xl font-bold">{completedJobs}</span>
+        {/* Job Summary Cards with 3D depth */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Completed Card */}
+          <div className="group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 to-green-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="relative bg-gradient-to-br from-emerald-500/20 to-green-500/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
+              <div className="flex items-center justify-between mb-6">
+                <div className="bg-emerald-500/20 p-4 rounded-2xl border border-emerald-500/30 shadow-lg">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                </div>
+                <span className="text-5xl font-black text-white tracking-tight">{completedJobs}</span>
+              </div>
+              <h3 className="font-bold text-emerald-400 mb-2 text-lg">Completed Jobs</h3>
+              <p className="text-sm text-slate-400 font-medium">Successfully published to LinkedIn</p>
             </div>
-            <h3 className="font-semibold text-green-50 mb-1">Completed Jobs</h3>
-            <p className="text-sm text-green-100 opacity-90">Successfully published</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <Activity className="w-8 h-8 opacity-80" />
-              <span className="text-3xl font-bold">{runningJobs}</span>
+          {/* Running Card */}
+          <div className="group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-cyan-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="relative bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
+              <div className="flex items-center justify-between mb-6">
+                <div className="bg-blue-500/20 p-4 rounded-2xl border border-blue-500/30 shadow-lg animate-pulse">
+                  <Activity className="w-10 h-10 text-blue-400" />
+                </div>
+                <span className="text-5xl font-black text-white tracking-tight">{runningJobs}</span>
+              </div>
+              <h3 className="font-bold text-blue-400 mb-2 text-lg">Running Jobs</h3>
+              <p className="text-sm text-slate-400 font-medium">Currently processing content</p>
             </div>
-            <h3 className="font-semibold text-blue-50 mb-1">Running Jobs</h3>
-            <p className="text-sm text-blue-100 opacity-90">Currently processing</p>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="w-8 h-8 opacity-80" />
-              <span className="text-3xl font-bold">{jobs.length}</span>
+          {/* Total Card */}
+          <div className="group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="relative bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/30 rounded-3xl p-8 shadow-2xl transform transition-all duration-300 hover:scale-105 hover:-translate-y-2">
+              <div className="flex items-center justify-between mb-6">
+                <div className="bg-purple-500/20 p-4 rounded-2xl border border-purple-500/30 shadow-lg">
+                  <TrendingUp className="w-10 h-10 text-purple-400" />
+                </div>
+                <span className="text-5xl font-black text-white tracking-tight">{jobs.length}</span>
+              </div>
+              <h3 className="font-bold text-purple-400 mb-2 text-lg">Total Jobs</h3>
+              <p className="text-sm text-slate-400 font-medium">{failedJobs} failed • All time stats</p>
             </div>
-            <h3 className="font-semibold text-slate-50 mb-1">Total Jobs</h3>
-            <p className="text-sm text-slate-100 opacity-90">{failedJobs} failed attempts</p>
           </div>
         </div>
 
-        {/* Recent Jobs (Same as before) */}
-        <div className="mb-6">
-          <h3 className="text-xl font-bold text-slate-900 mb-4">Recent Jobs</h3>
+        {/* Recent Jobs Section */}
+        <div className="mb-8">
+          <h3 className="text-2xl font-black text-white mb-2">Recent Jobs</h3>
+          <p className="text-slate-400 font-medium">Track your latest automated workflows</p>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-slate-600 font-medium">Loading job statuses...</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-xl animate-pulse" />
+              <Loader2 className="relative w-16 h-16 text-blue-400 animate-spin mb-6" />
+            </div>
+            <p className="text-slate-300 font-bold text-lg">Loading job statuses...</p>
+            <p className="text-slate-500 text-sm mt-2">Please wait</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-            <p className="text-red-800 font-medium">Error loading jobs</p>
-            <p className="text-red-600 text-sm mt-1">{error}</p>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-red-500/20 rounded-2xl blur-xl opacity-50" />
+            <div className="relative bg-red-500/10 border border-red-500/30 rounded-2xl p-8 text-center backdrop-blur-sm">
+              <p className="text-red-400 font-bold text-lg mb-2">Error loading jobs</p>
+              <p className="text-red-300/80 text-sm">{error}</p>
+            </div>
           </div>
         ) : jobs.length === 0 ? (
-          <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center">
-            <div className="bg-slate-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Activity className="w-8 h-8 text-slate-400" />
+          <div className="relative group">
+            <div className="absolute inset-0 bg-slate-700/30 rounded-3xl blur-xl opacity-50" />
+            <div className="relative bg-slate-800/50 backdrop-blur-xl border-2 border-dashed border-slate-700 rounded-3xl p-16 text-center">
+              <div className="bg-gradient-to-br from-slate-700 to-slate-800 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+                <Activity className="w-10 h-10 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">No jobs yet</h3>
+              <p className="text-slate-400 font-medium">Start your first agent to see automated jobs here</p>
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No jobs yet</h3>
-<p className="text-slate-600">Your automated content jobs will appear here</p>          </div>
+          </div>
         ) : (
           <div className="space-y-6">
             {jobs.map((job) => (
