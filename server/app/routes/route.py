@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.temp_pydantic_v1_params import Query
 from pydantic import BaseModel
 from app.models.agent import AgentState
-from app.services.mongodb_service import get_job_summary_from_summary_collection, get_total_posts, get_user_post_count
+from app.services.mongodb_service import get_job_summary_from_summary_collection, get_total_posts, get_user_post_count, get_user_posts
 from app.utils.logger import get_logger
 from app.services.agent_graph import app
 
@@ -75,3 +76,30 @@ def get_user_posts_count(email: str):
     except Exception as e:
         logger.exception("Failed to fetch user post count: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to fetch user post count: {str(e)}")
+
+
+@router.get("/user-posts/{email}")
+def get_user_posts_route(email: str, limit: int = Query(10, ge=1, le=100)):
+    """
+    📰 Get all posts published by a specific user.
+
+    Args:
+        email (str): User's email address.
+        limit (int): Number of posts to retrieve (default=10, max=100).
+
+    Returns:
+        JSON with the user's posts list.
+    """
+    try:
+        posts = get_user_posts(email, limit)
+        return {
+            "email": email,
+            "total_posts": len(posts),
+            "posts": posts,
+        }
+    except Exception as e:
+        logger.exception("Failed to fetch posts for user %s: %s", email, e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch posts for user {email}: {e}",
+        )

@@ -23,18 +23,27 @@ import {
 } from 'lucide-react';
 import React from 'react';
 
+interface Post {
+  _id: string;
+  user_email: string;
+  niche: string;
+  description: string;
+  posted_date: string;
+}
+
 export const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { jobs, loading, error } = useCronJobStatus(user?.id || null);
   const { startAgent, starting, startError, startMessage } = useAgentStart();
   const [userPostCount, setUserPostCount] = useState(0);
-  
   const [niche, setNiche] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [pulseScale, setPulseScale] = useState(1);
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [executionStep, setExecutionStep] = useState(0);
   const [executionProgress, setExecutionProgress] = useState(0);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
@@ -95,7 +104,7 @@ export const Dashboard = () => {
         clearInterval(progressInterval);
       };
     }
-  }, [starting, showExecutionModal]);
+  }, [starting, showExecutionModal, executionSteps.length]);
 
   const handleStartAgentClick = () => {
     if (!user || !user.accessToken) {
@@ -125,6 +134,28 @@ export const Dashboard = () => {
     };
 
     fetchUserPostCount();
+  }, [user?.email]);
+
+  // Fetch user's posts
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (user?.email) {
+        setLoadingPosts(true);
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/agent/user-posts/${encodeURIComponent(user.email)}`
+          );
+          const data = await response.json();
+          setUserPosts(data.posts);
+        } catch (error) {
+          console.error('Failed to fetch user posts:', error);
+        } finally {
+          setLoadingPosts(false);
+        }
+      }
+    };
+
+    fetchUserPosts();
   }, [user?.email]);
 
   return (
@@ -359,14 +390,16 @@ export const Dashboard = () => {
           <div className="flex items-center justify-between animate-fade-in">
             <div>
               <h3 className="text-lg font-semibold text-white mb-0.5">Execution History</h3>
-              <p className="text-xs text-white/40">Recent automation jobs and their status</p>
+              <p className="text-xs text-white/40">Recent posts and automation status</p>
             </div>
-            {jobs.length > 0 && (
-              <span className="text-xs text-white/30 font-medium px-3 py-1 bg-white/5 rounded-full border border-white/5">{jobs.length} records</span>
+            {userPosts.length > 0 && (
+              <span className="text-xs text-white/30 font-medium px-3 py-1 bg-white/5 rounded-full border border-white/5">
+                {userPosts.length} posts
+              </span>
             )}
           </div>
 
-          {loading ? (
+          {loadingPosts ? (
             <div className="flex flex-col items-center justify-center py-24 bg-white/[0.02] border border-white/5 rounded-xl">
               <div className="relative mb-6">
                 <div className="w-16 h-16 border-4 border-white/10 rounded-full" />
@@ -389,7 +422,7 @@ export const Dashboard = () => {
                 </div>
               </div>
             </div>
-          ) : jobs.length === 0 ? (
+          ) : userPosts.length === 0 ? (
             <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-12 text-center animate-fade-in">
               <div className="relative w-20 h-20 mx-auto mb-6">
                 <div className="absolute inset-0 bg-white/5 rounded-2xl animate-pulse" />
@@ -397,14 +430,40 @@ export const Dashboard = () => {
                   <Activity className="w-10 h-10 text-white/20" />
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-white/80 mb-1">No execution history</h3>
-              <p className="text-sm text-white/40">Start your first automation to see results here</p>
+              <h3 className="text-base font-semibold text-white/80 mb-1">No posts yet</h3>
+              <p className="text-sm text-white/40">Start your first post to see history here</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {jobs.map((job, index) => (
-                <div key={job.id} className="animate-fade-in-up" style={{animationDelay: `${index * 0.05}s`}}>
-                  <JobStatusCard job={job} />
+              {userPosts.map((post, index) => (
+                <div 
+                  key={post._id} 
+                  className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all animate-fade-in-up" 
+                  style={{animationDelay: `${index * 0.05}s`}}
+                >
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 bg-white/5 rounded text-xs text-white/60 font-medium">
+                            {post.niche}
+                          </span>
+                          <span className="text-xs text-white/40">
+                            {new Date(post.posted_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-white/80">
+                          {post.description}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
