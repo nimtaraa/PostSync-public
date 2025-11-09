@@ -97,7 +97,7 @@ def get_user_post_count(email: str) -> int:
 
 
 @tool("save_post")
-def save_post(user_email: str, niche: str, description: str) -> Optional[str]:
+def save_post(user_email: str, niche: str, topic: str) -> Optional[str]:
     """
     Save a post to MongoDB.
 
@@ -114,7 +114,7 @@ def save_post(user_email: str, niche: str, description: str) -> Optional[str]:
         post_data = {
             "user_email": user_email,
             "niche": niche,
-            "description": description,
+            "topic": topic,
             "posted_date": datetime.utcnow()
         }
         

@@ -11,6 +11,7 @@ router = APIRouter(prefix="/agent", tags=["Agent Workflow"])
 # ✅ Define a request body model
 class NicheRequest(BaseModel):
     niche: str
+    email: str  # Add this line
 
 @router.post("/start")
 async def run_agent_workflow(req: NicheRequest):
@@ -26,6 +27,7 @@ async def run_agent_workflow(req: NicheRequest):
             image_asset_urn=None,
             is_approved=False,
             iteration_count=0,
+            user_email=req.email,  # Add this line
         )
 
         logger.info("🚀 Starting workflow for niche: %s", req.niche)

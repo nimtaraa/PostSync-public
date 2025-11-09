@@ -19,10 +19,18 @@ export const useAgentStart = () => {
     setStartMessage(null);
 
     try {
-      // Make the API call with the token in the headers
+      // Get user email from localStorage
+      const userStr = localStorage.getItem("linkedin_user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const email = user?.email;
+
+      if (!email) {
+        throw new Error("User email not found");
+      }
+
       const res = await axios.post(
         `${API_URL}/agent/start`, // Use the live backend URL
-        { niche }, // This is the request body
+        { niche, email }, // Include email in request
         {
           headers: {
             Authorization: `Bearer ${token}`,

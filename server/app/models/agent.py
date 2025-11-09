@@ -17,6 +17,7 @@ class AgentState(BaseModel):
     image_asset_urn: Optional[str] = None
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: Optional[datetime] = None
+    user_email: Optional[str] = None  # Add this line
 
     @field_validator("niche")
     @classmethod

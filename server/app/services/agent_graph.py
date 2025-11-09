@@ -172,17 +172,13 @@ def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
         })
         logger.info("✅ LinkedIn post successful: %s", linkedin_response)
 
-        # 2️⃣ Save post to MongoDB
+        # 2️⃣ Save post to MongoDB with user email
         save_post.invoke({
-            "platform": "LinkedIn",
+            "user_email": state.user_email,  # Use email from state
             "niche": state.niche,
             "topic": state.topic,
-            "content": state.final_post,
-            "image_urn": state.image_asset_urn,
-            "posted_at": datetime.now(timezone.utc).isoformat(),
-            "linkedin_response": linkedin_response,
         })
-        logger.info(POST_EXECUTOR_SUCCESS_MESSAGE)
+        logger.info(f"✅ Post saved to MongoDB for user: {state.user_email}")
 
         return {"messages": [{"role": "system", "content": "post_success"}], "current_node": "post_executor"}
     except Exception as e:
