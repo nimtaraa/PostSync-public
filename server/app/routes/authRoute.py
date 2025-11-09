@@ -87,8 +87,15 @@ def get_user_info(authorization: str = Header(...)):
 
     data = res.json()
     user_id = data.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Could not get user ID from LinkedIn")
+
     person_urn = f"urn:li:person:{user_id}"
     email = data.get("email")
+
+    # Set credentials before initializing user
+    set_credentials(access_token, person_urn)
+    print(f"✅ Set credentials - token: {bool(access_token)}, urn: {person_urn}")
 
     # Initialize user in MongoDB
     try:
@@ -96,12 +103,8 @@ def get_user_info(authorization: str = Header(...)):
         print(f"MongoDB user data: {mongo_user}")
     except Exception as e:
         print(f"Failed to initialize MongoDB user: {e}")
-        # Don't fail the login if MongoDB fails
         mongo_user = {"total_posts": 0}
 
-    set_credentials(access_token, person_urn)
-
-    # Return enhanced user info with MongoDB data
     return {
         "id": user_id,
         "name": data.get("name"),
