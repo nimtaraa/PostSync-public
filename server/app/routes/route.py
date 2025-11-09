@@ -13,7 +13,7 @@ class NicheRequest(BaseModel):
     niche: str
 
 @router.post("/start")
-def run_agent_workflow(req: NicheRequest):
+async def run_agent_workflow(req: NicheRequest):
     """
     🚀 Run the AI agent workflow for a given niche.
     """
@@ -31,7 +31,7 @@ def run_agent_workflow(req: NicheRequest):
         logger.info("🚀 Starting workflow for niche: %s", req.niche)
 
         final_state = None
-        for s in app.stream(state):
+        async for s in app.astream(state):
             node_name = list(s.keys())[0]
             logger.info("➡ Node executed: %s", node_name)
             final_state = s

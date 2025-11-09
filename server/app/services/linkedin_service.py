@@ -47,7 +47,7 @@ def upload_media_to_linkedin(file_path: str) -> str | None:
 
     try:
         # Step 1: Register upload
-        reg_response = requests.post(REGISTER_UPLOAD_URL, headers=headers, json=payload)
+        reg_response = requests.post(REGISTER_UPLOAD_URL, headers=headers, json=payload, timeout=15)
         reg_response.raise_for_status()
         reg_data = reg_response.json()
 
@@ -115,7 +115,7 @@ def post_to_linkedin(post_content: str, image_asset_urn: str | None = None) -> s
         ]
 
     try:
-        response = requests.post(LINKEDIN_POST_API_URL, headers=headers, data=json.dumps(payload))
+        response = requests.post(LINKEDIN_POST_API_URL, headers=headers, data=json.dumps(payload), timeout=15)
         if response.status_code == 201:
             logger.info(LINKEDIN_POST_SUCCESS)
             return LINKEDIN_POST_SUCCESS

@@ -40,6 +40,8 @@ posting_agent = create_react_agent(model=llm, tools=posting_tools)
 # ------------------------------------------------------------
 
 def topic_generator_node(state: AgentState) -> Dict[str, Optional[str]]:
+    logger.info("➡ Entering topic_generator node...")
+
     """Generate a topic for the given niche."""
     try:
         prompt = ChatPromptTemplate.from_messages([
@@ -58,6 +60,8 @@ def topic_generator_node(state: AgentState) -> Dict[str, Optional[str]]:
 
 
 def content_creator_node(state: AgentState) -> Dict[str, Optional[str]]:
+    logger.info("➡ Entering content_creator_node...")
+
     """Generate a LinkedIn post draft from the topic."""
     try:
         prompt = ChatPromptTemplate.from_messages([
@@ -75,6 +79,7 @@ def content_creator_node(state: AgentState) -> Dict[str, Optional[str]]:
 
 
 def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
+    logger.info("➡ Entering reviewer_node...")
     """Review and refine post drafts until approved or max iterations reached."""
     current_iter = state.iteration_count + 1
     try:
@@ -110,6 +115,7 @@ def reviewer_node(state: AgentState) -> Dict[str, Optional[str]]:
 
 
 def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
+    logger.info("➡ Entering image_generation_node...")
     """Generate image using Gemini and upload to LinkedIn."""
     if not state.final_post:
         logger.warning("⚠️ No final_post available, skipping image generation.")
@@ -152,6 +158,7 @@ def image_generation_node(state: AgentState) -> Dict[str, Optional[str]]:
 
 
 def post_executor_node(state: AgentState) -> Dict[str, Optional[str]]:
+    logger.info("➡ Entering post_executor_node...")
     """Post content to LinkedIn and save record in MongoDB."""
     if not state.final_post:
         logger.error("❌ No final_post to publish.")
