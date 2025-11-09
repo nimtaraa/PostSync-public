@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 from typing import List, Optional
-from app.utils.config import MONGO_URI, DB_NAME, DB_COLLECTION_NAME
+from app.utils.config import MONGO_URI, DB_NAME
 from app.models.post import Post
 from app.utils.constants import POST_SAVE_ERROR
 from app.utils.logger import get_logger
