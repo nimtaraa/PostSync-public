@@ -1,86 +1,25 @@
-# FILE: app/routes/authRoute.py
-
 import json
 import os
 import requests
-from fastapi import APIRouter, HTTPException, Header, Depends
-from typing import Optional, List
-from pydantic import BaseModel
-import jwt
-from datetime import datetime, timedelta
+from fastapi import APIRouter, HTTPException, Header
 
-# --- 1. IMPORT CHANGES ---
-from app.services.mongodb_service import (
-    save_post,
-    get_total_posts,
-    get_recent_posts,
-    get_posts_by_platform,
-    get_posts_stats,
-    get_job_summary_from_summary_collection,
-    update_job_summary,
-    get_all_users,
-    save_or_update_user_credentials  # <-- ADDED
-)
-from app.services.agent_graph import app as agent_graph
-from app.models.agent import AgentState
-# from app.services.Linkedin_credentials import set_credentials # <-- REMOVED
+from app.services.Linkedin_credentials import set_credentials
 
-# === LinkedIn OAuth Router ===
-auth_router = APIRouter(prefix="/auth/linkedin", tags=["LinkedIn OAuth"])
+router = APIRouter(prefix="/auth/linkedin", tags=["LinkedIn OAuth"])
 
+# === LinkedIn App Config ===
 LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
+
 REDIRECT_URI = "https://post-sync-public-7uqj.vercel.app/auth/callback"
+
 TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 
-# JWT Configuration
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# === Helper Functions ===
-def create_jwt_token(user_data: dict) -> str:
-    """Create JWT token with user data."""
-    payload = {
-        "user_id": user_data["id"],
-        "name": user_data["name"],
-        "email": user_data.get("email"),
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-def verify_jwt_token(token: str) -> dict:
-    """Verify and decode JWT token."""
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-async def get_current_user(authorization: str = Header(...)) -> str:
-    """
-    Extract LinkedIn user_id from JWT token in Authorization header.
-    """
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.replace("Bearer ", "")
-    payload = verify_jwt_token(token)
-    
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-    
-    return user_id
-
-# === LinkedIn OAuth Endpoints ===
-
-@auth_router.post("/token")
+# === Step 1: Exchange Code for Access Token ===
+@router.post("/token")
 def get_access_token(data: dict):
-    """Exchange authorization code for access token."""
     code = data.get("code")
     redirect_uri = data.get("redirect_uri") or REDIRECT_URI
 
@@ -95,7 +34,7 @@ def get_access_token(data: dict):
     payload = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": REDIRECT_URI,  # must EXACTLY match the one in LinkedIn settings
         "client_id": LINKEDIN_CLIENT_ID,
         "client_secret": LINKEDIN_CLIENT_SECRET,
     }
@@ -115,7 +54,7 @@ def get_access_token(data: dict):
 
     token_data = res.json()
     access_token = token_data.get("access_token")
-    
+    print("access_token:", access_token)
     if not access_token:
         raise HTTPException(status_code=400, detail="No access token in response")
 
@@ -123,12 +62,9 @@ def get_access_token(data: dict):
     return token_data
 
 
-@auth_router.get("/me")
+# === Step 2: Retrieve LinkedIn User Info ===
+@router.get("/me")
 def get_user_info(authorization: str = Header(...)):
-    """
-    Retrieve LinkedIn user info and create JWT token for app authentication.
-    This endpoint now returns both user info and a JWT token.
-    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Bearer token")
 
@@ -153,168 +89,12 @@ def get_user_info(authorization: str = Header(...)):
     user_id = data.get("sub")
     person_urn = f"urn:li:person:{user_id}"
     
-    # --- 2. THIS IS THE FIX ---
-    # Save credentials to the database
-    save_or_update_user_credentials(user_id, access_token, person_urn)
-    # --- END OF FIX ---
-    
-    # Prepare user data
-    user_data = {
-        "id": user_id,
+    set_credentials(access_token, person_urn)
+    # ✅ Extract and return essential user info
+    return {
+        "id": data.get("sub"),
         "name": data.get("name"),
         "email": data.get("email"),
         "picture": data.get("picture"),
         "locale": data.get("locale"),
     }
-    
-    # Create JWT token for subsequent API calls
-    jwt_token = create_jwt_token(user_data)
-    
-    # Return user data with JWT token
-    return {
-        **user_data,
-        "jwt_token": jwt_token,  # Frontend should use this for API calls
-        # "linkedin_access_token": access_token  <-- No longer send this
-    }
-
-
-# === Posts API Router ===
-posts_router = APIRouter(prefix="/api", tags=["posts"])
-
-# === Request/Response Models ===
-class PostCreate(BaseModel):
-    platform: str
-    content: str
-    niche: str  # <-- 3. ADDED niche
-    image_data: Optional[bytes] = None
-
-class PostStats(BaseModel):
-    total_posts: int
-    posts_by_platform: dict
-
-class JobSummary(BaseModel):
-    total_completed: int
-    total_failed: int
-
-# === Posts Endpoints ===
-
-@posts_router.post("/posts")
-async def create_post(
-    post: PostCreate,
-    user_id: str = Depends(get_current_user)
-):
-    """Create a new post for the authenticated user."""
-    # --- 4. UPDATED save_post call ---
-    post_id = save_post(
-        linkedin_user_id=user_id,
-        platform=post.platform,
-        content=post.content,
-        niche=post.niche,  # <-- PASS niche
-        image_data=post.image_data
-    )
-    # --- END OF UPDATE ---
-    
-    if post_id:
-        return {
-            "success": True,
-            "post_id": post_id,
-            "message": f"Post saved successfully"
-        }
-    else:
-        raise HTTPException(status_code=500, detail="Failed to save post")
-
-@posts_router.get("/posts/count")
-async def count_posts(user_id: str = Depends(get_current_user)):
-    """Get total number of posts for the authenticated user."""
-    count = get_total_posts(user_id)
-    return {"total_posts": count}
-
-@posts_router.get("/posts/recent")
-async def recent_posts(
-    limit: int = 10,
-    user_id: str = Depends(get_current_user)
-):
-    """Get recent posts for the authenticated user."""
-    posts = get_recent_posts(user_id, limit)
-    return {"posts": posts, "count": len(posts)}
-
-@posts_router.get("/posts/platform/{platform}")
-async def posts_by_platform(
-    platform: str,
-    limit: int = 10,
-    user_id: str = Depends(get_current_user)
-):
-    """Get posts by platform for the authenticated user."""
-    posts = get_posts_by_platform(user_id, platform, limit)
-    return {"platform": platform, "posts": posts, "count": len(posts)}
-
-@posts_router.get("/posts/stats")
-async def posts_statistics(user_id: str = Depends(get_current_user)):
-    """Get post statistics for the authenticated user."""
-    stats = get_posts_stats(user_id)
-    return stats
-
-@posts_router.get("/summary")
-async def get_summary(user_id: str = Depends(get_current_user)):
-    """Get job summary for the authenticated user."""
-    summary = get_job_summary_from_summary_collection(user_id)
-    return summary
-
-@posts_router.put("/summary/{field}")
-async def update_summary(
-    field: str,
-    increment: int = 1,
-    user_id: str = Depends(get_current_user)
-):
-    """Update job summary field for the authenticated user."""
-    if field not in ["total_completed", "total_failed"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Field must be 'total_completed' or 'total_failed'"
-        )
-    
-    message = update_job_summary(user_id, field, increment)
-    return {"message": message}
-
-@posts_router.get("/users")
-async def list_users():
-    """Get list of all users (admin endpoint - consider adding auth here)."""
-    users = get_all_users()
-    return {"users": users, "count": len(users)}
-
-@posts_router.get("/me")
-async def get_current_user_info(user_id: str = Depends(get_current_user)):
-    """Get current authenticated user's ID."""
-    return {"user_id": user_id}
-
-@posts_router.post("/start-agent")
-async def start_agent(
-    data: dict,
-    user_id: str = Depends(get_current_user)
-):
-    """Start the agent with proper credentials."""
-    try:
-        # Get user credentials
-        credentials = get_user_credentials(user_id)
-        if not credentials:
-            raise HTTPException(status_code=400, detail="User credentials not found")
-
-        # Initialize agent state
-        initial_state = AgentState(
-            niche=data.get("niche"),
-            user_id=user_id,
-            linkedin_access_token=credentials.get("linkedin_access_token"),
-            person_urn=credentials.get("person_urn")
-        )
-
-        # Execute agent graph
-        final_state = await agent_graph.ainvoke(initial_state)
-        
-        if "post_success" in str(final_state.messages):
-            return {"message": "Agent executed successfully"}
-        else:
-            raise HTTPException(status_code=500, detail="Agent execution failed")
-
-    except Exception as e:
-        logger.error(f"Agent execution failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

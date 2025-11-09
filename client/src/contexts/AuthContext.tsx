@@ -1,153 +1,145 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
+const REDIRECT_URI = import.meta.env.VITE_LINKEDIN_REDIRECT_URI; // Must match exactly with LinkedIn App settings
 
 interface User {
   id: string;
   name: string;
-  email?: string;
+  email: string;
   picture?: string;
-  locale?: string;
+  accessToken: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  jwtToken: string | null;
-  linkedinToken: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  signInWithLinkedIn: () => Promise<void>;
-  logout: () => void;
+  loading: boolean;
+  signInWithLinkedIn: () => void;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
-const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'https://post-sync-public-7uqj.vercel.app/auth/callback';
-
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [jwtToken, setJwtToken] = useState<string | null>(null);
-  const [linkedinToken, setLinkedinToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored auth on mount
-    const storedJwt = localStorage.getItem('jwt_token');
-    const storedUser = localStorage.getItem('user');
-    const storedLinkedinToken = localStorage.getItem('linkedin_token');
-
-    if (storedJwt && storedUser) {
-      setJwtToken(storedJwt);
+    const storedUser = localStorage.getItem("linkedin_user");
+    if (storedUser) {
       setUser(JSON.parse(storedUser));
-      setLinkedinToken(storedLinkedinToken);
+      setLoading(false);
+      return;
     }
 
-    setIsLoading(false);
-
-    // Handle OAuth callback
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    
-    if (code && !storedJwt) {
-      handleOAuthCallback(code);
+    // Run LinkedIn callback logic only once per session
+    if (window.location.pathname === "/auth/callback") {
+      const hasRun = sessionStorage.getItem("linkedin_callback_handled");
+      if (!hasRun) {
+        sessionStorage.setItem("linkedin_callback_handled", "true");
+        handleLinkedInCallback();
+      } else {
+        console.log("⚠️ Skipping duplicate callback handling");
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  const signInWithLinkedIn = async () => {
-    const scope = 'openid profile email w_member_social';
-    const state = Math.random().toString(36).substring(7);
-    
-    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?` +
-      `response_type=code&` +
-      `client_id=${LINKEDIN_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-      `state=${state}&` +
-      `scope=${encodeURIComponent(scope)}`;
+  const signInWithLinkedIn = () => {
+    // Reset callback guard before new login attempt
+    sessionStorage.removeItem("linkedin_callback_handled");
 
-    // Store state for verification
-    sessionStorage.setItem('oauth_state', state);
-    
-    // Redirect to LinkedIn
+    const state = crypto.randomUUID();
+    localStorage.setItem("linkedin_state", state);
+
+    const scope = "openid profile email w_member_social";
+    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI
+    )}&scope=${encodeURIComponent(scope)}&state=${state}`;
+
     window.location.href = authUrl;
   };
 
-  const handleOAuthCallback = async (code: string) => {
+  const handleLinkedInCallback = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    const error = params.get("error");
+
+    if (error) {
+      alert("LinkedIn login failed: " + error);
+      setLoading(false);
+      return;
+    }
+
+    if (!code || !state) {
+      setLoading(false);
+      return;
+    }
+
+    const savedState = localStorage.getItem("linkedin_state");
+    if (state !== savedState) {
+      console.error("❌ Invalid OAuth state");
+      setLoading(false);
+      return;
+    }
+
     try {
-      setIsLoading(true);
-      
-      // Step 1: Exchange code for LinkedIn access token
-      const tokenResponse = await axios.post(`${API_BASE_URL}/auth/linkedin/token`, {
-        code,
-        redirect_uri: REDIRECT_URI
-      });
+      console.log("🔹 Exchanging code for token...");
+      const tokenResponse = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/linkedin/token`,
+        { code, redirect_uri: REDIRECT_URI }
+      );
 
-      const { access_token } = tokenResponse.data;
+      const access_token = tokenResponse.data.access_token;
+      if (!access_token) throw new Error("No access token returned");
 
-      // Step 2: Get user info and JWT token
-      const userResponse = await axios.get(`${API_BASE_URL}/auth/linkedin/me`, {
-        headers: {
-          'Authorization': `Bearer ${access_token}`
-        }
-      });
+      console.log("✅ Token received. Fetching user info...");
+      const userInfo = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/linkedin/me`,
+        { headers: { Authorization: `Bearer ${access_token}` } }
+      );
 
-      const { jwt_token, ...userData } = userResponse.data;
+      const userData: User = {
+        id: userInfo.data.sub || userInfo.data.id,
+        name: userInfo.data.name,
+        email: userInfo.data.email,
+        picture: userInfo.data.picture,
+        accessToken: access_token,
+      };
 
-      // IMPORTANT: Store the LinkedIn access token from userResponse, not tokenResponse
-      const linkedinAccessToken = userResponse.data.linkedin_access_token;
-
-      // Store tokens and user data
-      localStorage.setItem('jwt_token', jwt_token);
-      localStorage.setItem('linkedin_token', linkedinAccessToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      setJwtToken(jwt_token);
-      setLinkedinToken(linkedinAccessToken);
       setUser(userData);
+      localStorage.setItem("linkedin_user", JSON.stringify(userData));
+      localStorage.removeItem("linkedin_state");
 
-      // Clean up URL
-      window.location.href = '/dashboard';      
-    } catch (error) {
-      console.error('OAuth callback error:', error);
-      logout();
+      // Replace history to remove ?code=... from URL
+      window.history.replaceState({}, document.title, "/dashboard");
+    } catch (err: any) {
+      console.error("❌ LinkedIn login error:", err.response?.data || err.message);
+      alert("Login failed. Check console for details.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('linkedin_token');
-    localStorage.removeItem('user');
-    setJwtToken(null);
-    setLinkedinToken(null);
+  const signOut = () => {
     setUser(null);
+    localStorage.removeItem("linkedin_user");
+    sessionStorage.removeItem("linkedin_callback_handled");
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        jwtToken,
-        linkedinToken,
-        isAuthenticated: !!jwtToken && !!user,
-        isLoading,
-        signInWithLinkedIn,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, signInWithLinkedIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
-

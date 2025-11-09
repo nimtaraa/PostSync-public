@@ -1,47 +1,95 @@
-# FILE: app/services/linkedin_service.py
-
-import requests
 import json
-import os
+import requests
 from langchain.tools import tool
-from typing import Optional, Dict, Any
-
 from app.utils.logger import get_logger
+from app.utils.constants import (
+    LINKEDIN_MISSING_CREDENTIALS,
+    LINKEDIN_ASSET_REGISTER_FAIL,
+    LINKEDIN_ASSET_UPLOAD_FAIL,
+    LINKEDIN_POST_SUCCESS,
+    LINKEDIN_POST_FAIL,
+    LINKEDIN_NETWORK_ERROR,
+    REGISTER_UPLOAD_URL,
+    LINKEDIN_POST_API_URL,
+)
+from app.services.Linkedin_credentials import get_credentials
 
 logger = get_logger(__name__)
 
-# === API URLs ===
-POST_URL = "https://api.linkedin.com/v2/ugcPosts"
-MEDIA_REGISTER_URL = "https://api.linkedin.com/v2/assets?action=registerUpload"
-PROFILE_URL = "https://api.linkedin.com/v2/me"
+def upload_media_to_linkedin(file_path: str) -> str | None:
+    """
+    Upload an image to LinkedIn and return the asset URN.
+
+    Args:
+        file_path (str): Local path to the image file.
+
+    Returns:
+        str | None: LinkedIn asset URN if successful, else None.
+    """
+    access_token, person_urn = get_credentials()
+    if not access_token or not person_urn:
+        logger.error("❌ LinkedIn credentials not set!")
+        return None
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "X-Restli-Protocol-Version": "2.0.0"
+    }
+
+    payload = {
+        "registerUploadRequest": {
+            "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+            "owner": person_urn,
+            "serviceProvider": "LBA"
+        }
+    }
+
+    try:
+        # Step 1: Register upload
+        reg_response = requests.post(REGISTER_UPLOAD_URL, headers=headers, json=payload)
+        reg_response.raise_for_status()
+        reg_data = reg_response.json()
+
+        asset_urn = reg_data["value"]["asset"]
+        upload_url = reg_data["value"]["uploadMechanism"][
+            "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+        ]["uploadUrl"]
+
+        # Step 2: Upload image
+        with open(file_path, "rb") as f:
+            upload_response = requests.post(upload_url, data=f, headers={
+                "Authorization": f"Bearer {access_token}"
+            })
+            upload_response.raise_for_status()
+
+        logger.info(f"✅ Image uploaded successfully to LinkedIn Asset API. URN: {asset_urn}")
+        return asset_urn
+
+    except requests.exceptions.RequestException as e:
+        logger.error(LINKEDIN_ASSET_REGISTER_FAIL.format(error=e))
+        return None
+    except Exception as e:
+        logger.error(LINKEDIN_ASSET_UPLOAD_FAIL.format(error=e))
+        return None
 
 
-@tool("linkedin_post")
-def post_to_linkedin(
-    post_content: str,
-    access_token: str,
-    person_urn: str,
-    image_urn: Optional[str] = None
-) -> str:
+# === Post to LinkedIn Tool ===
+@tool("post_to_linkedin")
+def post_to_linkedin(post_content: str, image_asset_urn: str | None = None) -> str:
     """
-    Publishes a post to LinkedIn, optionally with an image.
+    💬 Publish a text or image post to LinkedIn.
+
+    Args:
+        post_content (str): The text content to publish.
+        image_asset_urn (str | None): Optional LinkedIn asset URN for image.
+
+    Returns:
+        str: Status message of the operation.
     """
-    
-    logger.info("=== LinkedIn Post Attempt ===")
-    logger.info(f"Content Length: {len(post_content)}")
-    logger.info(f"Person URN: {person_urn}")
-    logger.info(f"Has Image: {bool(image_urn)}")
-    logger.info(f"Token Prefix: {access_token[:10] if access_token else 'None'}...")
-    
-    if not access_token:
-        error_msg = "Missing LinkedIn access token"
-        logger.error(error_msg)
-        return f"Error: {error_msg}"
-        
-    if not person_urn:
-        error_msg = "Missing person URN"
-        logger.error(error_msg)
-        return f"Error: {error_msg}"
+    access_token, person_urn = get_credentials()
+    if not access_token or not person_urn:
+        return "Missing LinkedIn credentials"       
 
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -49,144 +97,31 @@ def post_to_linkedin(
         "X-Restli-Protocol-Version": "2.0.0"
     }
 
-    # Test the token first
-    try:
-        test_response = requests.get(PROFILE_URL, headers=headers)
-        if test_response.status_code != 200:
-            error_msg = f"LinkedIn token validation failed: {test_response.status_code}"
-            logger.error(error_msg)
-            return f"Error: {error_msg}"
-    except Exception as e:
-        error_msg = f"Token validation request failed: {str(e)}"
-        logger.error(error_msg)
-        return f"Error: {error_msg}"
-
-    post_url = POST_URL
-    
-    post_data = {
-        "author": f"urn:li:person:{person_urn}",
+    payload = {
+        "author": person_urn,
         "lifecycleState": "PUBLISHED",
         "specificContent": {
             "com.linkedin.ugc.ShareContent": {
-                "shareCommentary": {
-                    "text": post_content
-                },
-                "shareMediaCategory": "NONE"
+                "shareCommentary": {"text": post_content},
+                "shareMediaCategory": "IMAGE" if image_asset_urn else "NONE"
             }
         },
-        "visibility": {
-            "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-        }
+        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
     }
 
-    # Add image to post_data if image_urn is provided
-    if image_urn:
-        logger.info(f"Attaching image URN: {image_urn}")
-        post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["shareMediaCategory"] = "IMAGE"
-        post_data["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = [
-            {
-                "status": "READY",
-                "media": image_urn
-            }
+    if image_asset_urn:
+        payload["specificContent"]["com.linkedin.ugc.ShareContent"]["media"] = [
+            {"status": "READY", "media": image_asset_urn}
         ]
-    else:
-        logger.info("No image URN provided, posting text-only.")
 
     try:
-        response = requests.post(post_url, headers=headers, data=json.dumps(post_data))
-        response.raise_for_status() # This will raise an error for 4xx/5xx responses
-        
-        response_data = response.json()
-        post_id = response_data.get("id")
-        
-        logger.info(f"✅ Post successful with ID: {post_id}")
-        return f"Post successful with ID: {post_id}"
-        
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"❌ LINKEDIN POST FAILED: {e.response.status_code} {e.response.text}")
-        return f"Error: {e.response.status_code} {e.response.text}"
-    except Exception as e:
-        logger.error(f"❌ LINKEDIN POST FAILED (Unknown): {e}")
-        return f"Error: {e}"
-
-
-# --- THIS IS THE NEW FUNCTION YOU WERE MISSING ---
-
-def upload_media_to_linkedin(
-    file_path: str,
-    access_token: str,
-    person_urn: str
-) -> Optional[str]:
-    """
-    Uploads an image to LinkedIn and returns the asset URN.
-    This is a 3-step process.
-    """
-    
-    logger.info(f"Starting image upload for user {person_urn}...")
-
-    # 1. Register the upload
-    register_headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0"
-    }
-    register_payload = {
-        "registerUploadRequest": {
-            "recipes": [
-                "urn:li:digitalmediaRecipe:feedshare-image"
-            ],
-            "owner": f"urn:li:person:{person_urn}",
-            "serviceRelationships": [
-                {
-                    "relationshipType": "OWNER",
-                    "identifier": "urn:li:userGeneratedContent"
-                }
-            ]
-        }
-    }
-
-    try:
-        reg_response = requests.post(
-            MEDIA_REGISTER_URL,
-            headers=register_headers,
-            data=json.dumps(register_payload)
-        )
-        reg_response.raise_for_status()
-        reg_data = reg_response.json()
-        
-        upload_url = reg_data["value"]["uploadMechanism"]["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]["uploadUrl"]
-        asset_urn = reg_data["value"]["asset"]
-        
-        logger.info(f"Upload registered. Asset URN: {asset_urn}")
-
-    except Exception as e:
-        logger.error(f"❌ LinkedIn media registration failed: {e}")
-        return None
-
-    # 2. Upload the image bytes
-    upload_headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/octet-stream" # Send as raw bytes
-    }
-    
-    try:
-        with open(file_path, 'rb') as f:
-            image_bytes = f.read()
-            
-        upload_response = requests.post(
-            upload_url,
-            headers=upload_headers,
-            data=image_bytes
-        )
-        upload_response.raise_for_status()
-        
-        logger.info(f"✅ Image bytes successfully uploaded to {upload_url}")
-        
-        # 3. Verify the upload (optional but good practice)
-        # You can add a check here to ensure the asset status is READY
-        
-        return asset_urn
-
-    except Exception as e:
-        logger.error(f"❌ LinkedIn media byte upload failed: {e}")
-        return None
+        response = requests.post(LINKEDIN_POST_API_URL, headers=headers, data=json.dumps(payload))
+        if response.status_code == 201:
+            logger.info(LINKEDIN_POST_SUCCESS)
+            return LINKEDIN_POST_SUCCESS
+        else:
+            logger.error(LINKEDIN_POST_FAIL.format(status=response.status_code, error=response.text))
+            return LINKEDIN_POST_FAIL.format(status=response.status_code, error=response.text)
+    except requests.exceptions.RequestException as e:
+        logger.error(LINKEDIN_NETWORK_ERROR.format(error=e))
+        return LINKEDIN_NETWORK_ERROR.format(error=e)

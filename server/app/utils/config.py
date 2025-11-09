@@ -1,5 +1,3 @@
-# FILE: app/utils/config.py
-
 import os
 from dotenv import load_dotenv
 from app.utils.constants import MISSING_ENV_VARS_ERROR
@@ -7,33 +5,26 @@ from app.utils.constants import MISSING_ENV_VARS_ERROR
 # Load environment variables
 load_dotenv(override=True)
 
-# === API Keys for your Agent ===
+# === Required API Keys and Tokens ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
+LINKEDIN_PERSON_URN = os.getenv("LINKEDIN_PERSON_URN")
+POST_NICHE = os.getenv("POST_NICHE")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-# === LinkedIn OAuth Credentials (from authRoute.py) ===
-LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
-LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
-
-# === Database (from mongodb_service.py) ===
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME")
-
-# === Security (from authRoute.py) ===
-JWT_SECRET = os.getenv("JWT_SECRET")
+DB_COLLECTION_NAME = os.getenv("DB_COLLECTION_NAME")
 
 # === Check for missing environment variables ===
-# This list should only contain keys the *server* needs to boot.
-# User-specific keys (like access_token) or request-specific
-# data (like niche) are handled by your API routes.
 required_vars = [
     "OPENAI_API_KEY",
+    "LINKEDIN_ACCESS_TOKEN",
+    "LINKEDIN_PERSON_URN",
+    "POST_NICHE",
     "GEMINI_API_KEY",
     "MONGO_URI",
     "DB_NAME",
-    "LINKEDIN_CLIENT_ID",
-    "LINKEDIN_CLIENT_SECRET",
-    "JWT_SECRET",
+    "DB_COLLECTION_NAME",
 ]
 
 missing_vars = [var for var in required_vars if not os.getenv(var)]

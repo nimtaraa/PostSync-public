@@ -1,44 +1,31 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { LoginPage } from './components/LoginPage';
-import Dashboard from './components/Dashboard';
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { LoginPage } from "./components/LoginPage";
+import { Dashboard } from "./components/Dashboard";
+import { Loader2 } from "lucide-react";
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const AppContent = () => {
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0b]">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-white font-medium">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return user ? <Dashboard /> : <LoginPage />;
 };
 
-const App: React.FC = () => {
+function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<LoginPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
+      <AppContent />
     </AuthProvider>
   );
-};
+}
 
 export default App;
