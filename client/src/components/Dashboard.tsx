@@ -20,6 +20,8 @@ import {
   Radio,
   Database,
   Send,
+  Calendar,
+  Tag,
 } from 'lucide-react';
 import React from 'react';
 
@@ -399,67 +401,157 @@ export const Dashboard = () => {
             )}
           </div>
 
+          {/* Add the shimmer animation styles */}
+          <style>{`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+            
+            @keyframes float {
+              0%, 100% { transform: translateY(0px); }
+              50% { transform: translateY(-10px); }
+            }
+            
+            @keyframes pulse-glow {
+              0%, 100% { opacity: 0.5; }
+              50% { opacity: 1; }
+            }
+            
+            .animate-shimmer {
+              animation: shimmer 2s infinite;
+            }
+            
+            .glass-card {
+              background: rgba(15, 23, 42, 0.4);
+              backdrop-filter: blur(12px);
+              border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            
+            .glass-card:hover {
+              background: rgba(15, 23, 42, 0.6);
+              border-color: rgba(255, 255, 255, 0.1);
+            }
+          `}</style>
+
           {loadingPosts ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white/[0.02] border border-white/5 rounded-xl">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 border-4 border-white/10 rounded-full" />
-                <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" />
-                <div className="absolute inset-2 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin-slow" />
-                <div className="absolute inset-0 animate-ping">
-                  <div className="w-16 h-16 border border-blue-500/20 rounded-full" />
+            <div className="glass-card rounded-2xl p-16 text-center">
+              <div className="relative w-24 h-24 mx-auto mb-8 animate-float">
+                <div className="absolute inset-0 border-4 border-slate-800 rounded-full" />
+                <div className="absolute inset-0 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute inset-0 border-4 border-transparent rounded-full"
+                    style={{
+                      borderTopColor: '#3b82f6',
+                      borderRightColor: '#06b6d4',
+                      animation: 'spin 1.5s linear infinite'
+                    }}
+                  />
+                </div>
+                <div className="absolute inset-3 border-4 border-transparent border-t-cyan-400 rounded-full opacity-60" 
+                     style={{animation: 'spin 2s linear infinite reverse'}} />
+                <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-xl animate-pulse-glow" />
+              </div>
+              
+              <div className="space-y-3">
+                <p className="text-base text-slate-300 font-semibold">Loading execution data</p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0s'}} />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}} />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}} />
                 </div>
               </div>
-              <p className="text-sm text-white/60 font-medium">Loading execution data...</p>
-              <p className="text-xs text-white/30 mt-1">Please wait</p>
             </div>
           ) : error ? (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 animate-shake">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
-                <div>
-                  <p className="text-sm font-semibold text-red-400 mb-1">Failed to load data</p>
-                  <p className="text-xs text-red-400/70">{error}</p>
+            <div className="glass-card rounded-2xl p-8 border-red-500/20 bg-red-950/20 animate-shake">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="p-3 bg-red-500/10 rounded-xl">
+                    <AlertCircle className="w-6 h-6 text-red-400 animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-400 mb-2">Failed to load data</h3>
+                  <p className="text-sm text-red-400/70 leading-relaxed">{error}</p>
                 </div>
               </div>
             </div>
           ) : userPosts.length === 0 ? (
-            <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-xl p-12 text-center animate-fade-in">
-              <div className="relative w-20 h-20 mx-auto mb-6">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl animate-pulse" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Activity className="w-10 h-10 text-white/20" />
+            <div className="glass-card rounded-2xl p-20 text-center">
+              <div className="relative w-32 h-32 mx-auto mb-8 animate-float">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl opacity-50 blur-2xl" />
+                <div className="relative bg-slate-800/50 rounded-3xl p-6 border border-slate-700/50">
+                  <Activity className="w-20 h-20 text-slate-600" />
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-white/80 mb-1">No posts yet</h3>
-              <p className="text-sm text-white/40">Start your first post to see history here</p>
+              
+              <h3 className="text-xl font-bold text-slate-300 mb-3">No posts yet</h3>
+              <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                Start your first post to see your execution history here
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {userPosts.map((post, index) => (
                 <div 
                   key={post._id} 
-                  className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all animate-fade-in-up" 
-                  style={{animationDelay: `${index * 0.05}s`}}
+                  className="group glass-card rounded-2xl p-6 transition-all duration-500 hover:scale-[1.02] cursor-pointer animate-slide-up overflow-hidden relative"
+                  style={{animationDelay: `${index * 0.1}s`}}
                 >
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer"
+                        style={{width: '200%'}}
+                      />
+                    </div>
+                  </div>
+
                   <div className="relative">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-white/5 rounded text-xs text-white/60 font-medium">
-                            {post.niche}
-                          </span>
-                          <span className="text-xs text-white/40">
-                            {new Date(post.posted_date).toLocaleDateString()}
-                          </span>
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 rounded-lg border border-slate-700/50 group-hover:border-blue-500/30 transition-colors">
+                            <Tag className="w-3.5 h-3.5 text-blue-400" />
+                            <span className="text-xs font-semibold text-slate-300">
+                              {post.niche}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                            <span className="text-xs text-slate-400">
+                              {new Date(post.posted_date).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-sm text-white/80">
+
+                        <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">
                           {post.description}
                         </p>
                       </div>
+
                       <div className="flex-shrink-0">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-emerald-500/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="relative p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-800/50">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Posted {Math.floor((new Date() - new Date(post.posted_date)) / (1000 * 60 * 60 * 24))} days ago</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" style={{width: '100%'}} />
+                          </div>
+                          <span className="text-slate-500 font-medium">Complete</span>
                         </div>
                       </div>
                     </div>
