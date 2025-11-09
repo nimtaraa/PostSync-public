@@ -27,6 +27,7 @@ export const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { jobs, loading, error } = useCronJobStatus(user?.id || null);
   const { startAgent, starting, startError, startMessage } = useAgentStart();
+  const [userPostCount, setUserPostCount] = useState(0);
   
   const [niche, setNiche] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -108,6 +109,23 @@ export const Dashboard = () => {
     setShowExecutionModal(true);
     startAgent(niche, user.accessToken);
   };
+
+  // Fetch user's post count
+  useEffect(() => {
+    const fetchUserPostCount = async () => {
+      if (user?.email) {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/agent/user/post-count/${encodeURIComponent(user.email)}`);
+          const data = await response.json();
+          setUserPostCount(data.count);
+        } catch (error) {
+          console.error('Failed to fetch user post count:', error);
+        }
+      }
+    };
+
+    fetchUserPostCount();
+  }, [user?.email]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] relative overflow-hidden">
@@ -265,15 +283,15 @@ export const Dashboard = () => {
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                   <div className="absolute inset-0 rounded-lg bg-emerald-400/20 animate-ping-slow opacity-0 group-hover:opacity-100" />
                 </div>
-                <span className="text-3xl font-bold text-white tracking-tight group-hover:scale-110 transition-transform">{completedJobs}</span>
+                <span className="text-3xl font-bold text-white tracking-tight group-hover:scale-110 transition-transform">{userPostCount}</span>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-medium text-white/40 uppercase tracking-wide">Completed</p>
+                <p className="text-xs font-medium text-white/40 uppercase tracking-wide">Posts Created</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-1000 ease-out" style={{width: `${(completedJobs / jobs.length) * 100}%`}} />
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-1000 ease-out" style={{width: '100%'}} />
                   </div>
-                  <span className="text-xs text-emerald-400/60 font-semibold">{jobs.length > 0 ? Math.round((completedJobs / jobs.length) * 100) : 0}%</span>
+                  <span className="text-xs text-emerald-400/60 font-semibold">Active</span>
                 </div>
               </div>
             </div>

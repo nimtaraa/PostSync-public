@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.models.agent import AgentState
-from app.services.mongodb_service import get_job_summary_from_summary_collection, get_total_posts
+from app.services.mongodb_service import get_job_summary_from_summary_collection, get_total_posts, get_user_post_count
 from app.utils.logger import get_logger
 from app.services.agent_graph import app
 
@@ -61,3 +61,15 @@ def get_jobs_summary():
     except Exception as e:
         logger.exception("Failed to fetch job summary: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to fetch job summary: {str(e)}")
+
+@router.get("/user/post-count/{email}")
+def get_user_posts_count(email: str):
+    """
+    Get the total number of posts for a specific user.
+    """
+    try:
+        count = get_user_post_count(email)
+        return {"count": count}
+    except Exception as e:
+        logger.exception("Failed to fetch user post count: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user post count: {str(e)}")

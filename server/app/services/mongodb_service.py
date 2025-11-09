@@ -5,37 +5,154 @@ from app.models.post import Post
 from app.utils.constants import POST_SAVE_ERROR
 from app.utils.logger import get_logger
 from langchain.tools import tool
+from datetime import datetime
 
 logger = get_logger(__name__)
 
 # === MongoDB Connection ===
 def get_collection():
     client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    return db[DB_COLLECTION_NAME]
+    db = client["linkedin_automation"]
+    return db["posts"]
+
+def get_user_collection():
+    """Get the user collection from MongoDB."""
+    client = MongoClient(MONGO_URI)
+    db = client["linkedin_automation"]
+    return db["users"]
+
+
+def get_or_create_user(user_id: str, email: str) -> dict:
+    """
+    Check if user exists by email. If not, create new user.
+    
+    Args:
+        user_id (str): LinkedIn user ID
+        email (str): User's email address
+    
+    Returns:
+        dict: User information with post count
+    """
+    collection = get_user_collection()
+    
+    try:
+        # Check if user already exists
+        existing_user = collection.find_one({"email": email})
+        
+        if existing_user:
+            logger.info(f"User already exists: {email}")
+            
+            # Get user's total post count
+            total_posts = get_user_post_count(email)
+            
+            return {
+                "email": email,
+                "user_id": existing_user["user_id"],
+                "total_posts": total_posts,
+                "is_new_user": False
+            }
+        else:
+            # Create new user
+            new_user = {
+                "user_id": user_id,
+                "email": email
+            }
+            
+            collection.insert_one(new_user)
+            logger.info(f"New user created: {email}")
+            
+            return {
+                "email": email,
+                "user_id": user_id,
+                "total_posts": 0,
+                "is_new_user": True
+            }
+            
+    except Exception as e:
+        logger.error(f"Error in get_or_create_user: {e}")
+        raise
+
+
+def get_user_post_count(email: str) -> int:
+    """
+    Get total post count for a specific user.
+    
+    Args:
+        email (str): User's email address
+    
+    Returns:
+        int: Total number of posts
+    """
+    collection = get_collection()
+    
+    try:
+        count = collection.count_documents({"user_email": email})
+        logger.info(f"User {email} has {count} posts")
+        return count
+        
+    except Exception as e:
+        logger.error(f"Failed to get user post count for {email}: {e}")
+        return 0
+    
+
 
 @tool("save_post")
-def save_post(platform: str, content: str, image_data: Optional[bytes] = None) -> Optional[str]:
+def save_post(user_email: str, niche: str, description: str) -> Optional[str]:
     """
     Save a post to MongoDB.
 
     Args:
-        platform (str): Platform name (e.g., "LinkedIn").
-        content (str): Post text.
-        image_data (Optional[bytes]): Optional image binary data.
+        user_email (str): Email of the user creating the post.
+        niche (str): Post niche/category.
+        description (str): Post description/content.
 
     Returns:
         Optional[str]: MongoDB inserted post ID if successful.
     """
     collection = get_collection()
     try:
-        post = Post(platform=platform, content=content, image_data=image_data)
-        result = collection.insert_one(post.model_dump())
-        logger.info(f"Post saved successfully with ID: {result.inserted_id}")
+        post_data = {
+            "user_email": user_email,
+            "niche": niche,
+            "description": description,
+            "posted_date": datetime.utcnow()
+        }
+        
+        result = collection.insert_one(post_data)
+        logger.info(f"Post saved successfully with ID: {result.inserted_id} for user: {user_email}")
         return str(result.inserted_id)
     except Exception as e:
         logger.error(POST_SAVE_ERROR.format(error=e))
         return None
+
+
+def get_user_posts(email: str, limit: int = 10) -> List[dict]:
+    """
+    Get posts for a specific user.
+
+    Args:
+        email (str): User's email address.
+        limit (int): Number of posts to retrieve. Default is 10.
+
+    Returns:
+        List[dict]: List of user's posts, sorted by newest first.
+    """
+    collection = get_collection()
+    try:
+        posts = list(collection.find({"user_email": email}).sort("posted_date", -1).limit(limit))
+        
+        # Convert ObjectId to string for JSON serialization
+        for post in posts:
+            post["_id"] = str(post["_id"])
+            # Convert datetime to string
+            if "posted_date" in post:
+                post["posted_date"] = post["posted_date"].isoformat()
+        
+        logger.info(f"Retrieved {len(posts)} posts for user: {email}")
+        return posts
+    except Exception as e:
+        logger.error(f"Failed to get posts for user {email}: {e}")
+        return []
 
 def get_total_posts() -> int:
     """
@@ -65,7 +182,6 @@ def get_recent_posts(limit: int = 10) -> List[dict]:
     """
     collection = get_collection()
     try:
-        # Sort by _id descending (newest first) and limit results
         posts = list(collection.find().sort("_id", -1).limit(limit))
         
         # Convert ObjectId to string for JSON serialization
@@ -199,3 +315,14 @@ def update_job_summary(field: str, increment: int = 1) -> str:
         msg = f"❌ Failed to update '{field}': {e}"
         logger.error(msg)
         return msg
+
+__all__ = [
+    'get_or_create_user',
+    'save_post',
+    'get_user_posts',
+    'get_total_posts',
+    'get_recent_posts',
+    'get_posts_stats',
+    'get_job_summary_from_summary_collection',
+    'update_job_summary'
+]

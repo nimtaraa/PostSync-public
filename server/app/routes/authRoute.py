@@ -4,6 +4,7 @@ import requests
 from fastapi import APIRouter, HTTPException, Header
 
 from app.services.Linkedin_credentials import set_credentials
+from app.services.mongodb_service import get_or_create_user
 
 router = APIRouter(prefix="/auth/linkedin", tags=["LinkedIn OAuth"])
 
@@ -85,16 +86,28 @@ def get_user_info(authorization: str = Header(...)):
         raise HTTPException(status_code=res.status_code, detail=res.text)
 
     data = res.json()
-
     user_id = data.get("sub")
     person_urn = f"urn:li:person:{user_id}"
-    
+    email = data.get("email")
+
+    # Initialize user in MongoDB
+    try:
+        mongo_user = get_or_create_user(user_id, email)
+        print(f"MongoDB user data: {mongo_user}")
+    except Exception as e:
+        print(f"Failed to initialize MongoDB user: {e}")
+        # Don't fail the login if MongoDB fails
+        mongo_user = {"total_posts": 0}
+
     set_credentials(access_token, person_urn)
-    # ✅ Extract and return essential user info
+
+    # Return enhanced user info with MongoDB data
     return {
-        "id": data.get("sub"),
+        "id": user_id,
         "name": data.get("name"),
-        "email": data.get("email"),
+        "email": email,
         "picture": data.get("picture"),
         "locale": data.get("locale"),
+        "total_posts": mongo_user.get("total_posts", 0),
+        "is_new_user": mongo_user.get("is_new_user", False),
     }
