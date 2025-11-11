@@ -92,6 +92,7 @@ export const Dashboard = () => {
               setShowExecutionModal(false);
               setExecutionStep(0);
               setExecutionProgress(0);
+              setRefreshFlag((prev) => !prev);
             }, 2000);
             return prev;
           }
@@ -117,7 +118,7 @@ export const Dashboard = () => {
     }
     setShowExecutionModal(true);
     startAgent(niche, user.accessToken);
-    setRefreshFlag((prev) => !prev);  
+     
 
   };
 
