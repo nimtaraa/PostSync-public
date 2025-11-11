@@ -1,5 +1,5 @@
 # 🤖 Post Sync
-
+[![Python Backend CI](https://github.com/nimtaraa/PostSync-public/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/nimtaraa/PostSync-public/actions/workflows/backend-ci.yml)
 > Automated LinkedIn Content Generation and Publishing, Powered by AI Agents
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![React](https://img.shields.io/badge/React-TypeScript-blue?logo=react) ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python) ![LangGraph](https://img.shields.io/badge/AI-LangGraph-brightgreen) ![MongoDB](https://img.shields.io/badge/MongoDB-4.4-green?logo=mongodb)
