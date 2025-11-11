@@ -104,7 +104,7 @@ export const Dashboard = () => {
         clearInterval(progressInterval);
       };
     }
-  }, [starting, showExecutionModal, executionSteps.length]);
+  }, [starting, showExecutionModal, executionSteps.length, refreshFlag]);
 
   const handleStartAgentClick = () => {
     if (!user || !user.accessToken) {
