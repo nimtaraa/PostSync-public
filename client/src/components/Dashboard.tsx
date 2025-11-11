@@ -105,9 +105,9 @@ export const Dashboard = () => {
         clearInterval(progressInterval);
       };
     }
-  }, [starting, showExecutionModal, executionSteps.length, refreshFlag]);
+  }, [starting, showExecutionModal, executionSteps.length]);
 
-  const handleStartAgentClick = () => {
+  const handleStartAgentClick = async () => {
     if (!user || !user.accessToken) {
       alert("Error: You are not logged in or your token is missing.");
       return;
@@ -117,7 +117,14 @@ export const Dashboard = () => {
       return;
     }
     setShowExecutionModal(true);
-    startAgent(niche, user.accessToken);
+    try {
+    await startAgent(niche, user.accessToken); // <--- await the call
+    setRefreshFlag((prev) => !prev); // <--- Now this runs AFTER startAgent is done
+  } catch (error) {
+    console.error("Failed to start agent:", error);
+    // You might want to hide the modal here too
+    setShowExecutionModal(false);
+  }
      
 
   };
@@ -137,7 +144,7 @@ export const Dashboard = () => {
     };
 
     fetchUserPostCount();
-  }, [user?.email]);
+  }, [user?.email, refreshFlag]);
 
   // Fetch user's posts
 useEffect(() => {
