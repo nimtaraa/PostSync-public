@@ -436,34 +436,38 @@ useEffect(() => {
             </div>
           ) : (
             <div className="space-y-3">
-  {userPosts.map((post, index) => (
-    <div
-      key={post._id}
-      className="group relative bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-all animate-fade-in-up"
-      style={{ animationDelay: `${index * 0.05}s` }}
-    >
-      {/* Hover gradient overlay */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      <div className="relative">
-        {/* Header row: Niche + Date */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-white tracking-wide">
-            {post.niche}
-          </span>
-          <span className="text-xs text-white/50">
-            {new Date(post.posted_date).toLocaleDateString()}
-          </span>
-        </div>
-
-        {/* Description */}
-        <p className="text-sm text-white/80 leading-relaxed">
-          {post.topic}
-        </p>
-      </div>
-    </div>
-  ))}
-</div>
+              {userPosts.map((post, index) => (
+                <div 
+                  key={post._id} 
+                  className="group relative bg-white/[0.02] border border-white/5 rounded-xl p-6 hover:bg-white/[0.04] transition-all animate-fade-in-up" 
+                  style={{animationDelay: `${index * 0.05}s`}}
+                >
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 bg-white/5 rounded text-xs text-white/60 font-medium">
+                            {post.niche}
+                          </span>
+                          <span className="text-xs text-white/40">
+                            {new Date(post.posted_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-white/80">
+                          {post.topic}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
