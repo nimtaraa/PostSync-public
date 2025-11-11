@@ -67,7 +67,7 @@ export const Dashboard = () => {
       }, 1500);
       return () => clearInterval(interval);
     }
-  }, [runningJobs]);
+  }, [runningJobs, refreshFlag]);
 
   // Execution animation sequence
   useEffect(() => {
@@ -137,7 +137,7 @@ export const Dashboard = () => {
     };
 
     fetchUserPostCount();
-  }, [user?.email]);
+  }, [user?.email, refreshFlag]);
 
   // Fetch user's posts
 useEffect(() => {
