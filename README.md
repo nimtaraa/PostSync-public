@@ -20,12 +20,13 @@ It's your personal, automated content team in a single application.
 
 ## 🚀 Key Features
 
-*📈 Stateful Multi-Agent Orchestration: Leverages LangGraph for a cyclical, self-healing workflow with transparent state management and robust retry logic.
-*🤖 Cognitive Content Synthesis: Employs a GPT-4o agent for deep niche analysis, topic ideation, and generating informative, thought-leadership-style content.
-*🔄 Iterative Critique & Refinement Loop: Features a "Reviewer Agent" that programmatically critiques drafts against quality heuristics, routing them for revision until approved.
-*🎨 Semantic Image Synthesis: A "Visual Agent" uses the Gemini API to analyze post context and synthesize a conceptually aligned, professional image.
-*🔗 Autonomous Deployment & Asset Handling: A "Publisher Agent" fully automates the LinkedIn API pipeline, including native image uploads via asset URN management.
-*🗂️ Persistent Content Ledger: Systematically archives all post artifacts, including draft history and live URLs, to MongoDB for auditing and analysis.
+* 📈 **Stateful Multi-Agent Orchestration:** Leverages **LangGraph** for a cyclical, self-healing workflow with transparent state management and robust retry logic.
+* 🤖 **Cognitive Content Synthesis:** Employs a **GPT-4o** agent for deep niche analysis, topic ideation, and generating informative, thought-leadership-style content.
+* 🔄 **Iterative Critique & Refinement Loop:** Features a "Reviewer Agent" that programmatically critiques drafts against quality heuristics, routing them for revision until approved.
+* 🎨 **Semantic Image Synthesis:** A "Visual Agent" uses the **Gemini API** to analyze post context and synthesize a conceptually aligned, professional image.
+* 🔗 **Autonomous Deployment & Asset Handling:** A "Publisher Agent" fully automates the LinkedIn API pipeline, including native image uploads via **asset URN** management.
+* 🗂️ **Persistent Content Ledger:** Systematically archives all post artifacts, including draft history and live URLs, to **MongoDB** for auditing and analysis.
+  
 ## 🛠️ Tech Stack
 
 This project is built with a modern, AI-first stack:
