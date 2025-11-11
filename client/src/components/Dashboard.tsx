@@ -44,7 +44,7 @@ export const Dashboard = () => {
   const [executionProgress, setExecutionProgress] = useState(0);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
-
+  const [refreshFlag, setRefreshFlag] = useState(false);
   const completedJobs = jobs.filter((job) => job.status === 'completed').length;
   const runningJobs = jobs.filter((job) => job.status === 'running').length;
   const failedJobs = jobs.filter((job) => job.status === 'failed').length;
@@ -116,7 +116,8 @@ export const Dashboard = () => {
       return;
     }
     setShowExecutionModal(true);
-    startAgent(niche, user.accessToken);
+    setRefreshFlag((prev) => !prev);  startAgent(niche, user.accessToken);
+
   };
 
   // Fetch user's post count
@@ -156,7 +157,7 @@ useEffect(() => {
   };
 
   fetchUserPosts();
-}, [user]);
+}, [user, refreshFlag]);
 
 
   return (
