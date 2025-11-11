@@ -15,7 +15,7 @@ export const useCronJobStatus = (userId: string | null) => {
       setError(null);
 
       try {
-        const res = await axios.get(`http://localhost:8080/agent/summary`);
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/agent/summary`);
         const { total_completed, total_failed } = res.data;
 
         // Convert totals into array of "summary jobs"

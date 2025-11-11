@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import axios from "axios";
 
 const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
-const REDIRECT_URI = import.meta.env.VITE_LINKEDIN_REDIRECT_URI; // Must match exactly with LinkedIn App settings
+const REDIRECT_URI = import.meta.env.VITE_LINKEDIN_REDIRECT_URI;
 
 interface User {
   id: string;

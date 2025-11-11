@@ -137,26 +137,27 @@ export const Dashboard = () => {
   }, [user?.email]);
 
   // Fetch user's posts
-  useEffect(() => {
-    const fetchUserPosts = async () => {
-      if (user?.email) {
-        setLoadingPosts(true);
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL}/agent/user-posts/${encodeURIComponent(user.email)}`
-          );
-          const data = await response.json();
-          setUserPosts(data.posts);
-        } catch (error) {
-          console.error('Failed to fetch user posts:', error);
-        } finally {
-          setLoadingPosts(false);
-        }
-      }
-    };
+useEffect(() => {
+  if (!user || !user.email) return; // 🚫 Don't run until user is ready
 
-    fetchUserPosts();
-  }, [user?.email]);
+  const fetchUserPosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/agent/user-posts/${encodeURIComponent(user.email)}`
+      );
+      const data = await response.json();
+      setUserPosts(data.posts);
+    } catch (error) {
+      console.error('Failed to fetch user posts:', error);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  fetchUserPosts();
+}, [user]);
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] relative overflow-hidden">
