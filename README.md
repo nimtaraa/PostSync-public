@@ -10,19 +10,19 @@
 
 
 
-
+## 🚀 [View Live Demo](https://post-sync-public-7uqj.vercel.app) 🚀
 
 ## 📖 About The Project
 
-Post Sync is a sophisticated, full-stack application designed to automate and elevate your LinkedIn content strategy. It's built for professionals, marketers, and teams who want to maintain a consistent, high-quality presence on LinkedIn without the daily grind of content creation.
+Post Sync is a sophisticated, full stack application designed to automate and elevate your LinkedIn content strategy. It's built for professionals, marketers, and teams who want to maintain a consistent, high quality presence on LinkedIn without the daily grind of content creation.
 
-Simply provide a niche or a general theme, and Post Sync's multi-agent AI system, built with **LangGraph**, takes over. It handles the entire workflow: from brainstorming insightful topics and writing compelling, informative posts to generating relevant, high-quality images and publishing them directly to your LinkedIn profile.
+Simply provide a niche or a general theme, and Post Sync's multi agent AI system, built with **LangGraph**, takes over. It handles the entire workflow: from brainstorming insightful topics and writing compelling, informative posts to generating relevant, high quality images and publishing them directly to your LinkedIn profile.
 
 It's your personal, automated content team in a single application.
 
 ## 🚀 Key Features
 
-* 📈 **Stateful Multi-Agent Orchestration:** Leverages **LangGraph** for a cyclical, self-healing workflow with transparent state management and robust retry logic.
+* 📈 **Stateful Multi-Agent Orchestration:** Leverages **LangGraph** for a cyclical, self healing workflow with transparent state management and robust retry logic.
 * 🤖 **Cognitive Content Synthesis:** Employs a **GPT-4o** agent for deep niche analysis, topic ideation, and generating informative, thought-leadership-style content.
 * 🔄 **Iterative Critique & Refinement Loop:** Features a "Reviewer Agent" that programmatically critiques drafts against quality heuristics, routing them for revision until approved.
 * 🎨 **Semantic Image Synthesis:** A "Visual Agent" uses the **Gemini API** to analyze post context and synthesize a conceptually aligned, professional image.
