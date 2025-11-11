@@ -116,7 +116,8 @@ export const Dashboard = () => {
       return;
     }
     setShowExecutionModal(true);
-    setRefreshFlag((prev) => !prev);  startAgent(niche, user.accessToken);
+    startAgent(niche, user.accessToken);
+    setRefreshFlag((prev) => !prev);  
 
   };
 
