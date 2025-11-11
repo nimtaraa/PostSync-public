@@ -1,0 +1,46 @@
+
+
+name: Python Backend CI
+
+on:
+
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**' 
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'server/**' 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+   
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pytest flake8 black
+
+    - name: Lint with Flake8
+      run: flake8 . --count --show-source --statistics
+
+    - name: Check formatting with Black
+      run: black . --check
+
+    - name: Run tests with Pytest
+      run: pytest
