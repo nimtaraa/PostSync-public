@@ -27,7 +27,7 @@ interface Post {
   _id: string;
   user_email: string;
   niche: string;
-  description: string;
+  topic: string;
   posted_date: string;
 }
 
@@ -458,7 +458,7 @@ useEffect(() => {
 
         {/* Description */}
         <p className="text-sm text-white/80 leading-relaxed">
-          {post.description}
+          {post.topic}
         </p>
       </div>
     </div>
